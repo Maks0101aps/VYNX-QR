@@ -33,7 +33,7 @@ pub fn render_svg(request: &RenderRequest, size_px: u32) -> AppResult<String> {
     }
 
     let matrix = build_matrix(&payload, effective_ec(request))?;
-    Ok(svg::export(&matrix, &resolved, size)?)
+    svg::export(&matrix, &resolved, size)
 }
 
 /// Render straight to RGBA, for putting an image on the clipboard.
