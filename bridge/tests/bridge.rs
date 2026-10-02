@@ -4,6 +4,10 @@
 //! the way across and converts back without losing anything.
 
 use vynx_qr_bridge::ffi::*;
+use vynx_qr_bridge::{
+    analyze, default_style, generate, generate_bitmap, generate_svg, is_encodable,
+    load_settings, payload_label, system_info,
+};
 
 fn text_payload(text: &str) -> Payload {
     Payload {
@@ -117,7 +121,7 @@ fn wifi_credentials_keep_their_surrounding_spaces() {
 #[test]
 fn a_missing_field_for_the_chosen_kind_is_reported() {
     let payload = Payload { kind: PayloadType::Wifi, ..text_payload("") };
-    let error = generate(&payload, &default_style()).expect_err("must refuse");
+    let error = generate(&payload, &default_style()).err().expect("must refuse");
     assert!(error.contains("network name"), "unhelpful error: {error}");
     assert!(!is_encodable(&payload));
 }
@@ -154,6 +158,18 @@ fn a_logo_raises_error_correction_and_still_verifies() {
 }
 
 #[test]
+fn an_unrecognised_payload_kind_is_refused() {
+    // A shared enum carries a `repr` byte, so a caller built against a newer
+    // header can send a kind this build has never seen. Encoding it as Geo would
+    // silently produce a pin in the middle of the Atlantic.
+    let payload = Payload { kind: PayloadType { repr: 200 }, ..text_payload("hello") };
+    let error = generate(&payload, &default_style()).err().expect("must refuse");
+    assert!(error.contains("Unsupported payload type"), "unexpected error: {error}");
+    assert!(!is_encodable(&payload));
+    assert!(payload_label(PayloadType { repr: 201 }).starts_with("Unsupported"));
+}
+
+#[test]
 fn system_info_reports_the_host_without_failing() {
     let info = system_info();
     assert!(!info.os_build.is_empty());
@@ -162,36 +178,50 @@ fn system_info_reports_the_host_without_failing() {
 }
 
 #[test]
-fn settings_round_trip_through_the_bridge_types() {
-    let mut settings = load_settings();
+fn settings_round_trip_without_touching_the_real_profile() {
+    // The bridge's own `load_settings` and `save_settings` address the real
+    // `%APPDATA%\VYNX\QR\settings.json`, so they are exercised here only for
+    // reading. Anything that writes goes through the engine's path-explicit API
+    // against a temporary file: a test must never leave the developer's own
+    // preferences altered.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("settings.json");
+
+    let mut settings = vynx_qr_core::settings::load_from(&path);
+    assert_eq!(settings, vynx_qr_core::settings::Settings::default());
+
     settings.default_size = 512;
     settings.use_windows_accent = false;
-    save_settings(&settings).expect("save");
-    let reloaded = load_settings();
+    vynx_qr_core::settings::save_to(&path, &settings).expect("save");
+
+    let reloaded = vynx_qr_core::settings::load_from(&path);
     assert_eq!(reloaded.default_size, 512);
     assert!(!reloaded.use_windows_accent);
-    // Put the user's settings back the way they were.
-    save_settings(&settings).expect("save");
+
+    // Reading through the bridge must not have written anything either.
+    let observed = load_settings();
+    assert!(
+        [256, 512, 1024, 2048].contains(&observed.default_size),
+        "the bridge returned an unusable size: {}",
+        observed.default_size
+    );
 }
 
 #[test]
-fn labels_come_from_the_engine() {
-    assert_eq!(payload_label(PayloadType::Wifi), "Wi-Fi network");
-    assert_eq!(payload_label(PayloadType::VCard), "Contact card");
+fn labels_come_from_the_bridge() {
+    assert_eq!(payload_label(PayloadType::Text), "Text");
+    assert_eq!(payload_label(PayloadType::Url), "URL");
+    assert_eq!(payload_label(PayloadType::Wifi), "Wi-Fi");
+    assert_eq!(payload_label(PayloadType::VCard), "Contact");
+    assert_eq!(payload_label(PayloadType::Geo), "Location");
 }
 
 /// A one pixel PNG, the smallest image the decoder accepts.
+///
+/// Built with the engine's own encoder rather than a hand assembled byte string,
+/// so the fixture cannot rot into something the decoder rejects.
 fn one_pixel_png() -> Vec<u8> {
-    // 1x1 opaque black, hand assembled so the test carries no extra dependency.
-    let bytes: [u8; 68] = [
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // signature
-        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR length + type
-        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1 x 1
-        0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, // 8 bit RGBA + CRC
-        0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, // IDAT length + type
-        0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4,
-        0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND
-        0xAE, 0x42, 0x60, 0x82,
-    ];
-    bytes.to_vec()
+    use vynx_qr_core::qr::render::{encode_png, Canvas};
+    use vynx_qr_core::qr::Rgba;
+    encode_png(&Canvas::new(1, 1, Rgba::new(255, 255, 255, 255))).expect("png")
 }

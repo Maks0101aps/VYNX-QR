@@ -5,7 +5,7 @@
 //! telemetry.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -75,7 +75,11 @@ impl Settings {
     }
 }
 
-fn settings_path() -> Option<PathBuf> {
+/// Where preferences live: `%APPDATA%\VYNX\QR\settings.json`.
+///
+/// Exposed so a test, or a portable build, can reason about the location without
+/// having to guess at the environment.
+pub fn default_path() -> Option<PathBuf> {
     let appdata = std::env::var_os("APPDATA")?;
     Some(PathBuf::from(appdata).join("VYNX").join("QR").join("settings.json"))
 }
@@ -83,10 +87,20 @@ fn settings_path() -> Option<PathBuf> {
 /// Read settings from disk, falling back to defaults when the file is missing or
 /// unreadable. A corrupt preferences file must never stop the app from starting.
 pub fn load() -> Settings {
-    let Some(path) = settings_path() else {
-        return Settings::default();
-    };
-    let Ok(text) = fs::read_to_string(&path) else {
+    match default_path() {
+        Some(path) => load_from(&path),
+        None => Settings::default(),
+    }
+}
+
+/// Read settings from an explicit path.
+///
+/// Taking the path as an argument rather than reading a global is what lets tests
+/// use a temporary file: a test must never load or write the real user's
+/// preferences, and a global override would be shared across the threads a test
+/// binary runs on.
+pub fn load_from(path: &Path) -> Settings {
+    let Ok(text) = fs::read_to_string(path) else {
         return Settings::default();
     };
     match serde_json::from_str::<Settings>(&text) {
@@ -97,16 +111,21 @@ pub fn load() -> Settings {
 
 /// Persist settings atomically enough for a desktop utility.
 pub fn save(settings: &Settings) -> AppResult<()> {
-    let Some(path) = settings_path() else {
+    let Some(path) = default_path() else {
         return Err(err_with(ErrorCode::SettingsFailed, "APPDATA is not set"));
     };
+    save_to(&path, settings)
+}
+
+/// Persist settings to an explicit path. See [`load_from`] on why this exists.
+pub fn save_to(path: &Path, settings: &Settings) -> AppResult<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
     }
     let json = serde_json::to_string_pretty(settings)
         .map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
-    fs::write(&path, json).map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
+    fs::write(path, json).map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
     Ok(())
 }
 
@@ -146,5 +165,51 @@ mod tests {
         assert_eq!(settings.sanitized().default_size, 1024);
         let ok = Settings { default_size: 2048, ..Settings::default() };
         assert_eq!(ok.sanitized().default_size, 2048);
+    }
+
+    #[test]
+    fn saves_and_loads_through_an_explicit_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("nested").join("settings.json");
+        let settings = Settings { theme: ThemeMode::Dark, default_size: 512, ..Settings::default() };
+
+        save_to(&path, &settings).expect("save");
+        assert!(path.is_file(), "the parent directory must be created");
+
+        let loaded = load_from(&path);
+        assert_eq!(loaded.theme, ThemeMode::Dark);
+        assert_eq!(loaded.default_size, 512);
+    }
+
+    #[test]
+    fn a_missing_file_yields_defaults_rather_than_an_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let loaded = load_from(&dir.path().join("absent.json"));
+        assert_eq!(loaded, Settings::default());
+    }
+
+    #[test]
+    fn a_corrupt_file_yields_defaults_rather_than_an_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("settings.json");
+        fs::write(&path, "{ this is not json").expect("write");
+        assert_eq!(load_from(&path), Settings::default());
+    }
+
+    #[test]
+    fn an_out_of_range_size_is_repaired_on_load() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("settings.json");
+        fs::write(&path, r#"{"defaultSize":37}"#).expect("write");
+        assert_eq!(load_from(&path).default_size, 1024);
+    }
+
+    #[test]
+    fn the_default_path_is_the_documented_one() {
+        // Only meaningful where APPDATA exists, which is the platform we ship on.
+        if let Some(path) = default_path() {
+            let text = path.to_string_lossy().replace('/', "\\");
+            assert!(text.ends_with("VYNX\\QR\\settings.json"), "unexpected path: {text}");
+        }
     }
 }

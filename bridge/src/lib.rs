@@ -199,8 +199,10 @@ pub mod ffi {
         /// WCAG contrast ratio between the two colours.
         contrast: f32,
         verification_status: VerifyStatus,
-        /// Result of the reduced size re-check, empty when there is no logo.
-        verification_reduced: String,
+        /// True when the reduced size re-check ran, which it only does with a logo.
+        has_reduced_verification: bool,
+        /// The reduced size result. Meaningful only when the flag above is true.
+        reduced_verification: VerifyStatus,
         /// Whatever the decoder recovered instead, empty on success.
         decoded: String,
         warnings: Vec<Warning>,
@@ -366,12 +368,22 @@ fn to_core_payload(value: &Payload) -> Result<vynx_qr_core::qr::payload::QrPaylo
             number: value.sms.number.clone(),
             message: value.sms.message.clone(),
         }
-    } else {
+    } else if value.kind == PayloadType::Geo {
         QrPayload::Geo {
             latitude: value.geo.latitude,
             longitude: value.geo.longitude,
             label: value.geo.label.clone(),
         }
+    } else {
+        // A cxx shared enum carries a `repr` byte, so a caller built against a
+        // newer header can send a kind this build has never heard of. Falling back
+        // to Geo here would encode a pin at (0, 0) with no warning, which is worse
+        // than refusing: the user would scan their own code and get a map of the
+        // Atlantic. Refusing is the only safe direction.
+        return Err(format!(
+            "Unsupported payload type (code {})",
+            value.kind.repr as u32
+        ));
     })
 }
 
@@ -559,11 +571,15 @@ pub fn generate(payload: &Payload, options: &RenderOptions) -> Result<GenerateRe
             ec_adjusted: result.ec_adjusted,
             contrast: result.contrast,
             verification_status: bridge_verify_status(result.verification.status),
-            verification_reduced: result
+            has_reduced_verification: result.verification.reduced.is_some(),
+            reduced_verification: result
                 .verification
                 .reduced
-                .map(|status| format!("{status:?}"))
-                .unwrap_or_default(),
+                .map(bridge_verify_status)
+                // Unreachable while the flag is false, but a shared enum cannot be
+                // "absent", so this has to name something. Verified is the safe
+                // default: the window only reads it when the flag is true.
+                .unwrap_or(VerifyStatus::Verified),
             decoded: result.verification.decoded.unwrap_or_default(),
             warnings: result
                 .warnings
@@ -601,46 +617,34 @@ pub fn is_encodable(payload: &Payload) -> bool {
         .unwrap_or(false)
 }
 
-/// A human readable label for a payload kind, taken from the engine so the
-/// window and the encoder never disagree about what to call a thing.
+/// The name of a payload kind, for the status line and for file naming.
+///
+/// This is deliberately the *kind*, not the content: a status chip reads "Wi-Fi"
+/// whether the SSID happens to be filled in yet, and a suggested file name is
+/// built from the kind before the user has typed anything.
 pub fn payload_label(kind: PayloadType) -> String {
-    use vynx_qr_core::qr::payload::{QrPayload, WifiSecurity};
-
-    let empty = String::new();
-    let core = if kind == PayloadType::Text {
-        QrPayload::Text { text: empty.clone() }
+    if kind == PayloadType::Text {
+        "Text".to_string()
     } else if kind == PayloadType::Url {
-        QrPayload::Url { url: empty.clone() }
+        "URL".to_string()
     } else if kind == PayloadType::Wifi {
-        QrPayload::Wifi {
-            ssid: empty.clone(),
-            password: empty.clone(),
-            security: WifiSecurity::Wpa,
-            hidden: false,
-        }
+        "Wi-Fi".to_string()
     } else if kind == PayloadType::VCard {
-        QrPayload::VCard {
-            first_name: empty.clone(),
-            last_name: empty.clone(),
-            organization: empty.clone(),
-            job_title: empty.clone(),
-            phone: empty.clone(),
-            email: empty.clone(),
-            website: empty.clone(),
-            address: empty.clone(),
-            note: empty.clone(),
-        }
+        "Contact".to_string()
     } else if kind == PayloadType::Email {
-        QrPayload::Email { to: empty.clone(), subject: empty.clone(), body: empty.clone() }
+        "Email".to_string()
     } else if kind == PayloadType::Phone {
-        QrPayload::Phone { number: empty.clone() }
+        "Phone".to_string()
     } else if kind == PayloadType::Sms {
-        QrPayload::Sms { number: empty.clone(), message: empty.clone() }
+        "SMS".to_string()
+    } else if kind == PayloadType::Geo {
+        "Location".to_string()
     } else {
-        QrPayload::Geo { latitude: 0.0, longitude: 0.0, label: empty }
-    };
-
-    core.display_label()
+        // Same reasoning as `to_core_payload`: an unrecognised kind is reported,
+        // not guessed at. Guessing would label a payload type this build cannot
+        // encode.
+        format!("Unsupported (code {})", kind.repr as u32)
+    }
 }
 
 pub fn load_logo(path: &str) -> Result<LogoAsset, String> {
