@@ -1,28 +1,26 @@
 //! Logo handling.
 //!
-//! The front end sends the raw bytes of a raster image (PNG, JPEG or WebP) as
-//! base64. Decoding happens once per render, which keeps the Rust side free of
-//! any long lived cache that would have to be invalidated.
+//! The caller supplies the raw bytes of a raster image (PNG, JPEG or WebP).
+//! Decoding happens once per render, which keeps this side free of any long lived
+//! cache that would have to be invalidated.
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use serde::{Deserialize, Serialize};
 
 use crate::error::{err_with, AppResult, ErrorCode};
 
 /// Hard limit on the decoded image dimensions.
-pub const MAX_LOGO_EDGE: u32 = 4096;
-/// Hard limit on the encoded size of the image.
-pub const MAX_LOGO_BYTES: usize = 8 * 1024 * 1024;
+pub const MAX_LOGO_EDGE: u32 = crate::MAX_LOGO_DIMENSION;
+/// Hard limit on the size of the encoded image.
+pub const MAX_LOGO_BYTES: usize = crate::MAX_LOGO_BYTES;
 
-/// Logo bytes as handed over by the front end.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// Logo bytes as handed over by the caller.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogoInput {
     /// File name, shown in the UI.
     pub name: String,
-    /// Base64 encoded PNG, JPEG or WebP bytes.
-    pub data: String,
+    /// PNG, JPEG or WebP bytes.
+    pub data: Vec<u8>,
 }
 
 /// A decoded logo, stored as straight RGBA8.
@@ -37,10 +35,7 @@ pub struct LogoAsset {
 impl LogoAsset {
     /// Decode and normalise to RGBA8.
     pub fn decode(input: &LogoInput) -> AppResult<Self> {
-        let bytes = BASE64
-            .decode(input.data.trim())
-            .map_err(|error| err_with(ErrorCode::LogoDecodeFailed, error))?;
-        Self::from_bytes(input.name.clone(), &bytes)
+        Self::from_bytes(input.name.clone(), &input.data)
     }
 
     pub fn from_bytes(name: String, bytes: &[u8]) -> AppResult<Self> {
@@ -156,8 +151,14 @@ mod tests {
     }
 
     #[test]
-    fn rejects_base64_noise() {
-        let input = LogoInput { name: "x.png".into(), data: "!!!!".into() };
+    fn rejects_arbitrary_bytes() {
+        let input = LogoInput { name: "x.png".into(), data: b"!!!!".to_vec() };
+        assert_eq!(LogoAsset::decode(&input).unwrap_err().code(), ErrorCode::LogoDecodeFailed);
+    }
+
+    #[test]
+    fn rejects_empty_input() {
+        let input = LogoInput { name: "x.png".into(), data: Vec::new() };
         assert_eq!(LogoAsset::decode(&input).unwrap_err().code(), ErrorCode::LogoDecodeFailed);
     }
 

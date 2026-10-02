@@ -1,4 +1,4 @@
-//! Error type shared by every Tauri command.
+//! Error type shared by every fallible operation in the engine.
 //!
 //! Every variant carries a stable machine readable `code` plus a sentence that is
 //! safe to show verbatim in the user interface. Technical detail stays in the

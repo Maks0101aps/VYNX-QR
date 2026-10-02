@@ -5,11 +5,8 @@
 //! result stays perfectly crisp. Any leftover pixels are filled with the
 //! background colour, which is invisible because it sits inside the quiet zone.
 
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD as BASE64;
 use image::codecs::png::{CompressionType, FilterType as PngFilter, PngEncoder};
 use image::{ExtendedColorType, ImageEncoder};
-use serde::{Deserialize, Serialize};
 
 use crate::error::{err_with, AppResult, ErrorCode};
 use crate::qr::logo::LogoAsset;
@@ -17,8 +14,7 @@ use crate::qr::payload::ModuleStyle;
 use crate::qr::{QrMatrix, ResolvedStyle};
 
 /// Straight (non premultiplied) 8 bit RGBA colour.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rgba {
     pub r: u8,
     pub g: u8,
@@ -306,13 +302,16 @@ fn inside_rounded(px: u32, py: u32, x: u32, y: u32, width: u32, height: u32, rad
     dx * dx + dy * dy <= (radius * radius) as i64
 }
 
-/// Encode a canvas as a PNG and return it base64 encoded (no `data:` prefix).
-pub fn encode_png(canvas: &Canvas) -> AppResult<String> {
+/// Encode a canvas as PNG bytes.
+///
+/// Raw bytes, not a data URL. The window builds a `QImage` straight from this
+/// buffer, so there is nothing to base64 encode or decode anywhere on the path.
+pub fn encode_png(canvas: &Canvas) -> AppResult<Vec<u8>> {
     let mut out = Vec::new();
     PngEncoder::new_with_quality(&mut out, CompressionType::Default, PngFilter::Adaptive)
         .write_image(&canvas.pixels, canvas.width, canvas.height, ExtendedColorType::Rgba8)
         .map_err(|error| err_with(ErrorCode::RenderFailed, error))?;
-    Ok(BASE64.encode(&out))
+    Ok(out)
 }
 
 /// Used by clipboard export, which needs BGRA on Windows.
@@ -322,13 +321,6 @@ pub fn canvas_to_bgra(canvas: &Canvas) -> Vec<u8> {
         out.extend_from_slice(&[chunk[2], chunk[1], chunk[0], chunk[3]]);
     }
     out
-}
-
-/// Render and encode in one step, used by the copy and export commands.
-pub fn render_png_base64(request: &crate::qr::RenderRequest) -> AppResult<String> {
-    let mut request = request.clone();
-    request.size_px = request.validate()?;
-    Ok(crate::qr::render(&request)?.png_base64)
 }
 
 #[cfg(test)]

@@ -4,11 +4,8 @@
 //! the app falls back to its own defaults instead of failing, and the module
 //! compiles on non Windows hosts so the rest of the core stays testable anywhere.
 
-use serde::{Deserialize, Serialize};
-
 /// Information the UI needs from the host operating system.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemInfo {
     /// `10.0.<build>` on Windows, or `0.0.0` elsewhere.
     pub os_build: String,

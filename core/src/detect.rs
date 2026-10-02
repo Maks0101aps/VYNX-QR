@@ -4,15 +4,13 @@
 //! between runs: the same string always produces the same classification, which
 //! is what makes the behaviour testable and predictable.
 
-use serde::{Deserialize, Serialize};
 
 use crate::error::AppResult;
 use crate::formats::{phone, url};
 use crate::qr::payload::QrPayload;
 
 /// Broad bucket the main input field resolved to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContentKind {
     Url,
     Email,
@@ -32,8 +30,7 @@ impl ContentKind {
 }
 
 /// Result of analysing the free-form input field.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Analysis {
     /// Exactly what the user typed.
     pub input: String,

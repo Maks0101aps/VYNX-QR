@@ -11,8 +11,6 @@ pub use logo::{LogoAsset, LogoInput};
 pub use render::{Canvas, Rgba};
 pub use verify::{Verification, VerifyStatus};
 
-use serde::{Deserialize, Serialize};
-
 use crate::error::{err, err_with, AppResult, ErrorCode};
 use crate::qr::payload::{EcLevel, ModuleStyle, QrPayload};
 
@@ -85,8 +83,7 @@ pub fn build_matrix(payload: &str, ec: EcLevel) -> AppResult<QrMatrix> {
 }
 
 /// Everything that influences the appearance of a QR code.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq)]
 pub struct QrStyle {
     pub module_style: ModuleStyle,
     /// `#RRGGBB`
@@ -160,26 +157,23 @@ pub struct ResolvedStyle {
 }
 
 /// A non-fatal problem the user should know about.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Warning {
-    pub code: &'static str,
+    pub code: String,
     pub message: String,
 }
 
 impl Warning {
-    pub fn new(code: &'static str, message: impl Into<String>) -> Self {
-        Self { code, message: message.into() }
+    pub fn new(code: &str, message: impl Into<String>) -> Self {
+        Self { code: code.to_string(), message: message.into() }
     }
 }
 
 /// Everything the UI needs to render a preview in one round trip.
-/// Output only, so it is serialized but never deserialized.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RenderResult {
-    /// Base64 PNG without the `data:` prefix.
-    pub png_base64: String,
+    /// Raw PNG bytes, ready to hand to an image decoder.
+    pub png: Vec<u8>,
     pub width: u32,
     pub height: u32,
     /// Modules per side, excluding the quiet zone.
@@ -205,6 +199,15 @@ pub fn render(request: &RenderRequest) -> AppResult<RenderResult> {
     let resolved = request.style.resolve()?;
     let mut warnings: Vec<Warning> = Vec::new();
 
+    // The logo has to be decoded before the error correction is decided, because
+    // that decision depends on whether there is one. Checking `resolved.logo` first
+    // always saw `None`, so the bump never happened.
+    let mut resolved = resolved;
+    resolved.logo = match &request.style.logo {
+        Some(input) => Some(LogoAsset::decode(input)?),
+        None => None,
+    };
+
     let mut ec_level = request.ec_level;
     let mut ec_adjusted = false;
     if resolved.logo.is_some() && ec_level != EcLevel::H {
@@ -218,13 +221,6 @@ pub fn render(request: &RenderRequest) -> AppResult<RenderResult> {
 
     let payload = encode_payload(&request.payload)?;
     let matrix = build_matrix(&payload, ec_level)?;
-
-    let asset = match &request.style.logo {
-        Some(input) => Some(LogoAsset::decode(input)?),
-        None => None,
-    };
-    let mut resolved = resolved;
-    resolved.logo = asset;
 
     if resolved.logo_ratio > 0.25 {
         warnings.push(Warning::new(
@@ -276,7 +272,7 @@ pub fn render(request: &RenderRequest) -> AppResult<RenderResult> {
     let total_modules = matrix.size as u32 + 2 * resolved.quiet_zone;
 
     Ok(RenderResult {
-        png_base64: png,
+        png,
         width: canvas.width,
         height: canvas.height,
         modules: matrix.size as u32,
@@ -292,9 +288,8 @@ pub fn render(request: &RenderRequest) -> AppResult<RenderResult> {
     })
 }
 
-/// Request accepted by the `render_qr` command.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// Everything the renderer needs for one image.
+#[derive(Debug, Clone, PartialEq)]
 pub struct RenderRequest {
     pub payload: QrPayload,
     pub style: QrStyle,
@@ -304,11 +299,15 @@ pub struct RenderRequest {
 }
 
 impl RenderRequest {
+    /// Check the payload is encodable and return a usable side length.
     pub fn validate(&self) -> AppResult<u32> {
         crate::qr::payload::ensure_not_empty(&self.payload)?;
         let size = if self.size_px == 0 { 1024 } else { self.size_px };
-        if size > 4096 {
-            return Err(err_with(ErrorCode::RenderFailed, "requested size exceeds 4096 px"));
+        if size > crate::MAX_RENDER_SIZE {
+            return Err(err_with(
+                ErrorCode::RenderFailed,
+                format!("requested size exceeds {} px", crate::MAX_RENDER_SIZE),
+            ));
         }
         Ok(size)
     }

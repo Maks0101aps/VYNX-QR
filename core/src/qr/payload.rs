@@ -1,15 +1,14 @@
-//! Payload model shared by the Rust core and the React front end.
+//! Payload model.
 //!
 //! The very same enum is used for detection results, style requests and export
-//! requests, so the UI never has to hand raw JSON blobs across the IPC bridge.
+//! requests, so the UI never has to hand raw JSON blobs across the bridge.
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::{err_with, AppResult, ErrorCode};
 
 /// Wi-Fi authentication variants that have a defined `WIFI:` payload encoding.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WifiSecurity {
     #[default]
     Wpa,
@@ -38,10 +37,8 @@ impl WifiSecurity {
     }
 }
 
-/// Error correction level. Serialised in camelCase so the front end can use the
-/// payload directly as an enum member.
+/// Error correction level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
 pub enum EcLevel {
     L,
     #[default]
@@ -86,7 +83,6 @@ impl From<EcLevel> for qrcode::EcLevel {
 
 /// Module rendering style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
 pub enum ModuleStyle {
     #[default]
     Square,
@@ -95,74 +91,48 @@ pub enum ModuleStyle {
 
 /// Everything VYNX QR knows how to put inside a QR code.
 ///
-/// The enum is tagged by `type` and uses camelCase field names, which is the
-/// exact shape `src/types/qr.ts` declares on the TypeScript side.
-///
-/// Every field except the identifying ones is `#[serde(default)]`, so a
-/// partially filled form reaches the core without the UI padding every field.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+/// This is the type the bridge shares with C++, so a caller never passes an
+/// untyped blob: the shape is checked by both compilers.
+#[derive(Debug, Clone, PartialEq)]
 pub enum QrPayload {
     Text {
         text: String,
     },
     Url {
-        #[serde(default)]
         url: String,
     },
     Wifi {
-        #[serde(default)]
         ssid: String,
-        #[serde(default)]
         password: String,
-        #[serde(default)]
         security: WifiSecurity,
-        #[serde(default)]
         hidden: bool,
     },
     VCard {
-        #[serde(default)]
         first_name: String,
-        #[serde(default)]
         last_name: String,
-        #[serde(default)]
         organization: String,
-        #[serde(default)]
         job_title: String,
-        #[serde(default)]
         phone: String,
-        #[serde(default)]
         email: String,
-        #[serde(default)]
         website: String,
-        #[serde(default)]
         address: String,
-        #[serde(default)]
         note: String,
     },
     Email {
-        #[serde(default)]
         to: String,
-        #[serde(default)]
         subject: String,
-        #[serde(default)]
         body: String,
     },
     Phone {
         number: String,
     },
     Sms {
-        #[serde(default)]
         number: String,
-        #[serde(default)]
         message: String,
     },
     Geo {
-        #[serde(default)]
         latitude: f64,
-        #[serde(default)]
         longitude: f64,
-        #[serde(default)]
         label: String,
     },
 }
@@ -301,18 +271,37 @@ mod tests {
     }
 
     #[test]
-    fn payload_serialises_with_camel_case_tag() {
+    fn phone_payload_reports_its_kind() {
         let payload = QrPayload::Phone { number: "+380991234567".into() };
-        let json = serde_json::to_value(&payload).expect("serialize");
-        assert_eq!(json["type"], "phone");
-        assert_eq!(json["number"], "+380991234567");
+        assert_eq!(payload.kind(), "phone");
+        assert_eq!(payload.encode().expect("encode"), "tel:+380991234567");
     }
 
     #[test]
-    fn vcard_payload_deserialises_from_front_end_shape() {
-        let raw = r#"{"type":"vCard","firstName":"Олена","lastName":"К","phone":"+380"}"#;
-        let payload: QrPayload = serde_json::from_str(raw).expect("deserialize");
+    fn vcard_payload_summarises_the_contact() {
+        let payload = QrPayload::VCard {
+            first_name: "Олена".into(),
+            last_name: "К".into(),
+            organization: String::new(),
+            job_title: String::new(),
+            phone: "+380".into(),
+            email: String::new(),
+            website: String::new(),
+            address: String::new(),
+            note: String::new(),
+        };
         assert_eq!(payload.kind(), "vcard");
         assert_eq!(payload.display_label(), "Олена К");
+    }
+
+    /// The bridge moves these strings by value, so anything the UI can type has to
+    /// survive the round trip through the engine untouched.
+    #[test]
+    fn unicode_survives_untouched() {
+        for text in ["Привіт, Україно 🇺🇦", "こんにちは", "مرحبا", "🙂", "a\u{200B}b"] {
+            let payload = QrPayload::Text { text: text.to_string() };
+            let encoded = payload.encode().expect("encode");
+            assert_eq!(encoded, text);
+        }
     }
 }

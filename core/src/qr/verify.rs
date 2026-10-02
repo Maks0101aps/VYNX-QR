@@ -4,13 +4,11 @@
 //! it reaches the user interface. The status line reports what actually happened,
 //! so `Scan verified` is a measured fact rather than a decoration.
 
-use serde::{Deserialize, Serialize};
 
 use crate::qr::render::Canvas;
 
 /// Result of the internal round trip.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerifyStatus {
     /// Decoded and the payload matched byte for byte.
     Verified,
@@ -27,8 +25,7 @@ impl VerifyStatus {
 }
 
 /// Verification outcome reported to the UI.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Verification {
     pub status: VerifyStatus,
     /// Payload the decoder recovered. Only populated on failure, truncated.

@@ -1,0 +1,43 @@
+[package]
+name = "vynx-qr-core"
+version = "1.0.0"
+description = "QR engine for VYNX QR: payload encoders, matrix building, raster and vector rendering, and scan verification."
+authors = ["Maks0101aps"]
+license-file = "../LICENSE"
+repository = "https://github.com/Maks0101aps/VYNX-QR"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "vynx_qr_core"
+# `rlib` for the bridge and tests, `staticlib` for the C++ link step.
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+# Only settings persistence still speaks JSON. Nothing in the QR engine does.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+# Used solely to embed a logo as a data URI inside an exported SVG.
+base64 = "0.23"
+
+# QR matrix generation (pure Rust, MIT/Apache-2.0)
+qrcode = { version = "0.14", default-features = false }
+# QR decoding used by the built-in scan verification
+rqrr = "0.11"
+# Raster output and logo decoding
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Registry",
+] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
