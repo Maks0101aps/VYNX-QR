@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+src-tauri/target
+src-tauri/gen
+package-lock.json
+*.ico
+*.png
+!src-tauri/icons/*.png
+!docs/*.png

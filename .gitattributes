@@ -1,0 +1,19 @@
+# Normalise line endings in the repository, and check them out as LF everywhere.
+# Prettier is configured with `endOfLine: lf`, so this keeps the working tree
+# consistent with what the formatter expects and stops CRLF churn in diffs.
+* text=auto eol=lf
+
+# Windows scripts must keep CRLF.
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+# Images, icons and bundles are binary and must never be translated.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.ico   binary
+*.bmp   binary
+*.exe   binary
+*.msi   binary

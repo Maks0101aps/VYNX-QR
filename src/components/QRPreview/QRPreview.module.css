@@ -1,0 +1,112 @@
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: var(--space-xl);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.qr {
+  display: block;
+  width: 320px;
+  height: 320px;
+  max-width: 100%;
+  image-rendering: pixelated;
+  border-radius: var(--radius-sm);
+  animation: appear var(--duration-slow) var(--ease-decelerate);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dropzone {
+  outline: 2px dashed var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-lg);
+}
+
+.dropHint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-md);
+  transform: translateX(-50%);
+  padding: 2px var(--space-md);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--text-caption-size);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Empty state ------------------------------------------------------------- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-2xl) var(--space-xl);
+  text-align: center;
+  color: var(--text-secondary);
+  animation: appear var(--duration-slow) var(--ease-decelerate);
+}
+
+.emptyArt {
+  opacity: 0.9;
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-section-size);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.emptyBody {
+  max-width: 320px;
+  font-size: var(--text-body-size);
+  line-height: 1.5;
+}
+
+.privacy {
+  margin-top: var(--space-sm);
+  font-size: var(--text-caption-size);
+  color: var(--text-tertiary);
+}
+
+.busy {
+  position: absolute;
+  inset: auto var(--space-lg) var(--space-lg) auto;
+  font-size: var(--text-caption-size);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 900px) {
+  .qr {
+    width: 260px;
+    height: 260px;
+  }
+}

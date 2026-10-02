@@ -1,0 +1,24 @@
+# Build output
+dist/
+coverage/
+node_modules/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Installer artifacts are published as GitHub Releases, never committed.
+/releases/
+
+# Local environment
+.env
+.env.*
+!.env.example
+*.local
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
