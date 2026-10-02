@@ -2,8 +2,9 @@
 name = "vynx-qr"
 version = "1.0.0"
 description = "VYNX QR — fast, private QR codes for Windows."
-authors = ["VYNX"]
-license = "MIT"
+authors = ["Maks0101aps"]
+# Custom licence that cannot be expressed as an SPDX expression; see ../LICENSE.
+license-file = "../LICENSE"
 repository = "https://github.com/VYNX-Project/vynx-qr"
 edition = "2021"
 rust-version = "1.82"
@@ -15,6 +16,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
+# `winresource` writes the Windows resource object straight from Rust, with no
+# dependency on `rc.exe`. `build.rs` falls back to it when `tauri-build`'s own
+# resource compiler produced an empty object, which happens on machines that have
+# no Microsoft resource compiler and a stub `llvm-rc` on PATH.
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
 
 [dependencies]
 tauri = { version = "2", features = [] }
