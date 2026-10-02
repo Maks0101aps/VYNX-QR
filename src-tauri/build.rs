@@ -45,7 +45,10 @@ fn embed_windows_resources_if_missing() {
     let (major, minor, patch) = parse_version(&version);
 
     let mut resource = winresource::WindowsResource::new();
-    resource.set_icon("icons/icon.ico");
+    // The group icon must carry ID 32512: `tauri` reads the window icon from
+    // `WINDOWS_APP_ICON_RESOURCE_ID`, and a plain `set_icon` would store it under
+    // ID 1, where Windows and Tauri never look for it.
+    resource.set_icon_with_id("icons/icon.ico", "32512");
     resource.set("FileVersion", &format!("{major}.{minor}.{patch}.0"));
     resource.set("ProductVersion", &format!("{major}.{minor}.{patch}.0"));
     resource.set("CompanyName", "VYNX");

@@ -28,7 +28,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,css,md,json}\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icons": "node scripts/generate-icons.mjs && tauri icon src-tauri/icons/source.png",
+    "icons": "node scripts/generate-icons.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

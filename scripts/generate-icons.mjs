@@ -207,25 +207,111 @@ function gradientBmp(width, height, from, to) {
   return encodeBmp(width, height, rgb);
 }
 
+/* ----------------------------------------------------------------- ICO ---- */
+
+/**
+ * One ICO entry.
+ *
+ * PNG compression is only legal for the 256x256 size; every smaller size must be a
+ * BITMAPINFOHEADER followed by a bottom-up BGRA bitmap and a 1bpp AND mask. Windows
+ * rejects a PNG entry below 256 with ERROR_RESOURCE_TYPE_NOT_FOUND (0x80070715),
+ * which is exactly what stopped the window icon from loading at runtime. So the
+ * small sizes stay uncompressed, and only the largest one is compressed, because
+ * that is where the 240 KB saving is.
+ */
+function encodeIconImage(size, rgba) {
+  if (size >= 256) return encodePng(size, size, rgba);
+
+  const header = Buffer.alloc(40);
+  header.writeUInt32LE(40, 0); // biSize
+  header.writeInt32LE(size, 4); // biWidth
+  header.writeInt32LE(size * 2, 8); // biHeight: XOR and AND masks stacked
+  header.writeUInt16LE(1, 12); // biPlanes
+  header.writeUInt16LE(32, 14); // biBitCount
+  header.writeUInt32LE(0, 16); // biCompression: BI_RGB
+
+  const rowBytes = size * 4;
+  const pixels = Buffer.alloc(rowBytes * size);
+  for (let y = 0; y < size; y += 1) {
+    // DIB rows run bottom-up.
+    const source = (size - 1 - y) * rowBytes;
+    for (let x = 0; x < size; x += 1) {
+      const from = source + x * 4;
+      const to = y * rowBytes + x * 4;
+      pixels[to] = rgba[from + 2]; // B
+      pixels[to + 1] = rgba[from + 1]; // G
+      pixels[to + 2] = rgba[from]; // R
+      pixels[to + 3] = rgba[from + 3]; // A
+    }
+  }
+
+  // The alpha channel carries the transparency, so the AND mask stays all zero.
+  const maskRow = Math.ceil(size / 32) * 4;
+  const mask = Buffer.alloc(maskRow * size);
+
+  return Buffer.concat([header, pixels, mask]);
+}
+
+/** Assemble the ICO container from `[{ size, image }]`. */
+function encodeIco(entries) {
+  const headerSize = 6 + entries.length * 16;
+  const directory = Buffer.alloc(headerSize);
+  directory.writeUInt16LE(0, 0); // reserved
+  directory.writeUInt16LE(1, 2); // type: icon
+  directory.writeUInt16LE(entries.length, 4);
+
+  let offset = headerSize;
+  entries.forEach((entry, index) => {
+    const at = 6 + index * 16;
+    // A dimension of 256 is stored as zero.
+    directory.writeUInt8(entry.size >= 256 ? 0 : entry.size, at);
+    directory.writeUInt8(entry.size >= 256 ? 0 : entry.size, at + 1);
+    directory.writeUInt8(0, at + 2); // palette size
+    directory.writeUInt8(0, at + 3); // reserved
+    directory.writeUInt16LE(1, at + 4); // colour planes
+    directory.writeUInt16LE(32, at + 6); // bits per pixel
+    directory.writeUInt32LE(entry.image.length, at + 8);
+    directory.writeUInt32LE(offset, at + 12);
+    offset += entry.image.length;
+  });
+
+  return Buffer.concat([directory, ...entries.map((entry) => entry.image)]);
+}
+
 /* ----------------------------------------------------------------- main ---- */
 
 mkdirSync(ICONS_DIR, { recursive: true });
 
+// VYNX QR ships Windows installers only, so the generator writes exactly the files
+// the build consumes and nothing more. An unreferenced size is dead weight in the
+// repository, and an unreferenced ICO entry is dead weight in every executable.
 const master = drawMark(1024);
+
+// The master, kept so the set can be regenerated at any resolution.
 writeFileSync(resolve(ICONS_DIR, 'source.png'), encodePng(1024, 1024, master));
 
-for (const size of [32, 48, 128, 256, 512]) {
-  const pixels = drawMark(size);
-  writeFileSync(resolve(ICONS_DIR, `${size}x${size}.png`), encodePng(size, size, pixels));
-}
-// @2x variant used by the bundler for high DPI contexts.
+// Standalone PNGs named in `bundle.icon` and imported by the title bar.
+writeFileSync(resolve(ICONS_DIR, '32x32.png'), encodePng(32, 32, drawMark(32)));
+writeFileSync(resolve(ICONS_DIR, '128x128.png'), encodePng(128, 128, drawMark(128)));
 writeFileSync(resolve(ICONS_DIR, '128x128@2x.png'), encodePng(256, 256, drawMark(256)));
-writeFileSync(resolve(ICONS_DIR, 'StoreLogo.png'), encodePng(50, 50, drawMark(50)));
-writeFileSync(resolve(ICONS_DIR, 'Square44x44Logo.png'), encodePng(44, 44, drawMark(44)));
-writeFileSync(resolve(ICONS_DIR, 'Square150x150Logo.png'), encodePng(150, 150, drawMark(150)));
-writeFileSync(resolve(ICONS_DIR, 'Square44x44Logo.targetsize-44_altform-unplated.png'), encodePng(44, 44, drawMark(44)));
 
-writeFileSync(resolve(ICONS_DIR, 'installer-header.bmp'), gradientBmp(150, 57, ACCENT_TOP, ACCENT_BOTTOM));
-writeFileSync(resolve(ICONS_DIR, 'installer-sidebar.bmp'), gradientBmp(164, 314, [0x27, 0x5b, 0xd6], [0x14, 0x35, 0x8c]));
+// NSIS wizard art.
+writeFileSync(
+  resolve(ICONS_DIR, 'installer-header.bmp'),
+  gradientBmp(150, 57, ACCENT_TOP, ACCENT_BOTTOM),
+);
+writeFileSync(
+  resolve(ICONS_DIR, 'installer-sidebar.bmp'),
+  gradientBmp(164, 314, [0x27, 0x5b, 0xd6], [0x14, 0x35, 0x8c]),
+);
+
+// The icon the executable embeds and both installers display. Windows picks the
+// entry matching the display it draws for, so the small sizes must be present for
+// the taskbar and Explorer.
+const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256];
+writeFileSync(
+  resolve(ICONS_DIR, 'icon.ico'),
+  encodeIco(ICO_SIZES.map((size) => ({ size, image: encodeIconImage(size, drawMark(size)) }))),
+);
 
 console.log(`icons written to ${ICONS_DIR}`);
