@@ -1,0 +1,23 @@
+[package]
+name = "vynx-qr-bridge"
+version = "1.0.0"
+description = "CXX bridge between the Rust QR engine and the native Qt window."
+authors = ["Maks0101aps"]
+license-file = "../LICENSE"
+repository = "https://github.com/Maks0101aps/VYNX-QR"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "vynx_qr_bridge"
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+vynx-qr-core = { path = "../core" }
+cxx = "1"
+
+[build-dependencies]
+cxx-build = "1"
+
+[dev-dependencies]
+tempfile = "3"
