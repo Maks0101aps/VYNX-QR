@@ -124,6 +124,22 @@ npm run tauri build --bundles msi         # MSI only
 
 Artifacts land in `src-tauri/target/release/bundle/`.
 
+### Windows resources
+
+The executable must carry three resources: the application manifest, the icon and the
+version block. Without the manifest the loader never binds
+`Microsoft.Windows.Common-Controls` v6, so the `TaskDialogIndirect` import used by
+the dialog plugin cannot be resolved and the process dies at load time with
+`STATUS_ENTRYPOINT_NOT_FOUND` before any of our code runs. This is why
+`build.rs` does not simply trust the build to succeed.
+
+`tauri-build` compiles these through `rc.exe` or `windres`. On a machine with no
+Microsoft resource compiler, a stub `llvm-rc` can exit with status 0 and write a
+32-byte, section-less COFF object, which leaves the executable with an empty
+`.rsrc` while the build still looks clean. `build.rs` detects that empty object and
+rebuilds the same three resources with `winresource`, which writes the COFF object
+directly in Rust and needs no external tool. On a normal MSVC setup nothing changes.
+
 ### Icons
 
 Application icons and the installer bitmaps are generated without any binary asset
@@ -174,4 +190,23 @@ scan. Warnings are advisory: you can always export what you built.
 
 ## Licence
 
-MIT. See `LICENSE`.
+**VYNX QR Source Available Licence — © 2026 Maks0101aps.**
+
+Free to use, not to be changed.
+
+- You may use VYNX QR for anything, personally or commercially, free of charge.
+- You may read, audit and study the source.
+- You may copy and redistribute it **unmodified**, including charging for it.
+
+You may **not** modify, fork, patch or derive a version from it, and you may not
+remove the copyright or attribution notices, without the author's written
+permission. To ask for permission, open an issue.
+
+This is deliberately _not_ an OSI-approved licence: it withholds the right to
+modify, which the Open Source Definition treats as non-negotiable. It is
+source-available rather than open source in the strict sense. If you need a
+permissively licensed build, ask — that is a conversation worth having.
+
+VYNX QR is built on permissive open source dependencies which keep their own
+licences; this one covers VYNX QR itself only. See `LICENSE` for the full terms,
+and `Cargo.lock` / `package-lock.json` for dependency licences.

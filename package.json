@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "description": "VYNX QR — fast, private QR codes for Windows.",
-  "license": "MIT",
-  "author": "VYNX",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Maks0101aps",
   "homepage": "https://github.com/VYNX-Project/vynx-qr",
   "repository": {
     "type": "git",

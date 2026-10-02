@@ -1,21 +1,143 @@
-MIT License
+VYNX QR — Source Available Licence
+Copyright (c) 2026 Maks0101aps. All rights reserved.
 
-Copyright (c) 2026 VYNX
+SPDX-License-Identifier: LicenseRef-VYNX-Source-Available
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This is not an OSI-approved open source licence. The source is published so that
+anyone can read it, audit it, run it and learn from it, and anyone may use it free
+of charge. What you may not do is change it. Everything below spells that out.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+================================================================================
+1. DEFINITIONS
+================================================================================
+
+"Licensor"   means Maks0101aps, the copyright holder of VYNX QR.
+"Software"   means VYNX QR: the source code, the compiled binaries, the installers,
+             the icons, the documentation and every other file in this repository or
+             released from it.
+"You"        means the individual or legal entity exercising the permissions granted
+             by this Licence.
+
+================================================================================
+2. GRANT OF USE — FREE AND UNRESTRICTED
+================================================================================
+
+Subject to Section 3, the Licensor grants you a perpetual, worldwide,
+non-exclusive, royalty-free, non-transferable licence to:
+
+  2.1  download, install and run the Software for any purpose, personal or
+       commercial, on any number of devices;
+  2.2  copy the Software, unmodified, as many times as you like;
+  2.3  study how the Software works, including reading, reviewing and auditing
+       the source code;
+  2.4  distribute the Software, unmodified, including charging for it or
+       bundling it inside a product or service you provide;
+  2.5  report faults, and discuss and propose improvements in public forums,
+       issue trackers and pull requests.
+
+No fee, and no separate written permission, is required for anything in this
+Section. The Software is free to use.
+
+================================================================================
+3. RESTRICTIONS — MODIFICATION AND REDISTRIBUTION
+================================================================================
+
+The permission in Section 2 is permission to *use*, not to *change*. Unless you
+have the Licensor's prior written permission, you must not:
+
+  3.1  modify, adapt, translate, refactor, decompile, disassemble or otherwise
+       alter the Software in any way, in any language, for any purpose;
+  3.2  publish or distribute a modified, patched, forked or derived version of
+       the Software;
+  3.3  remove, obscure, alter or hide any copyright, trademark, licence or
+       attribution notice in the Software or in any copy of it;
+  3.4  use the names "VYNX QR", "VYNX" or "Maks0101aps", or any of the project's
+       logos, icons or other branding, in a way that suggests the Licensor
+       endorses or is affiliated with your product or service.
+
+Section 3.1 is the practical effect of the phrase "you may use it, but not
+change it". Forking is modification and is not permitted without permission.
+
+================================================================================
+4. ATTRIBUTION
+================================================================================
+
+Every copy and every distribution of the Software must retain this notice:
+
+    VYNX QR
+    Copyright (c) 2026 Maks0101aps
+    Licensed under the VYNX QR Source Available Licence.
+    Free to use, not to be modified without permission.
+
+Attribution must be visible wherever the Software is presented to people: in a
+user interface, in documentation, in a README, in an about screen, or in the
+metadata of a distribution.
+
+================================================================================
+5. PERMISSION TO MODIFY
+================================================================================
+
+You may ask for permission to modify the Software. The Licensor is under no
+obligation to grant it, and may grant it on any terms, for any subset of the
+Software, and may change those terms later. Permission granted for one version
+does not apply to any later version and does not transfer to anyone else.
+
+Until you hold that permission, Section 3 applies in full.
+
+================================================================================
+6. NO WARRANTY
+================================================================================
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. THE LICENSOR DOES NOT
+WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE, SECURE, OR FIT FOR ANY PURPOSE.
+
+You are responsible for assessing whether the Software is suitable for your use
+and for backing up your own data.
+
+================================================================================
+7. NO LIABILITY
+================================================================================
+
+TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, DATA LOSS, OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF, OR
+IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+The total liability of the Licensor is limited to the amount you actually paid
+for the Software, which under Section 2.1 is zero.
+
+================================================================================
+8. TERMINATION
+================================================================================
+
+Your rights under this Licence end automatically if you breach Section 3. They
+also end if you distribute the Software and misrepresent its origin or
+provenance. Rights of people who received the Software from you under Section 2.4
+end only if your breach causes them to breach this Licence.
+
+================================================================================
+9. GOVERNING LAW
+================================================================================
+
+This Licence is governed by the laws applicable where the Licensor resides,
+without regard to conflict-of-law rules. If any provision is found
+unenforceable, the rest stays in force.
+
+================================================================================
+10. CHANGES TO THIS LICENCE
+================================================================================
+
+The Licensor may revise this Licence. Revised versions apply only to Software
+distributed after the revision; earlier copies keep the licence they were
+published under, so nothing you did in good faith is retroactively unlawful.
+
+================================================================================
+
+VYNX QR is built on open source software, which remains under its own licence.
+This Licence covers only VYNX QR itself and never restricts the licences of its
+dependencies, which are permissive by design.
+
+Full dependency licences: see `Cargo.lock`, `package-lock.json`, and the licence
+files shipped with each dependency.
