@@ -91,3 +91,8 @@ version numbers, then the resource compiler builds it. It carries the icon, the
 version block, and the manifest that binds Common Controls v6 — without that
 manifest `TaskDialogIndirect` cannot be resolved and the process dies at load
 time with `STATUS_ENTRYPOINT_NOT_FOUND`.
+
+The icon set itself lives in `app/resources/icons/` and is checked in, so a
+normal build needs nothing but the toolchain above. It can be regenerated with
+`node scripts/generate-icons.mjs`, which is the one place Node is still useful
+and is entirely optional.

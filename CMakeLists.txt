@@ -198,9 +198,7 @@ endif()
 # ---------------------------------------------------------------------------
 # Windows resources: icon, version information, common controls v6
 # ---------------------------------------------------------------------------
-# The icon set still lives under the Tauri tree; it moves to app/resources when
-# the web stack is removed.
-set(VYNX_ICON_DIR "src-tauri/icons")
+set(VYNX_ICON_DIR "app/resources/icons")
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(VYNX_RC_ARCH "x64")
 else()

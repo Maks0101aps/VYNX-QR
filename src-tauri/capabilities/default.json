@@ -1,7 +1,0 @@
-{
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Minimal capability set for VYNX QR: window management plus native file pickers. No network, shell, filesystem or HTTP permissions are granted.",
-  "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-save", "dialog:allow-open"]
-}
