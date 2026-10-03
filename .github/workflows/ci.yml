@@ -89,11 +89,14 @@ jobs:
       # while CMake still resolves Qt6Guid to its release one, and two Qt copies in
       # one process corrupt the heap. So the tested build is the release one, which
       # is also the thing that ships.
-      - name: Configure, build and test
-        run: |
-          cmake --preset release
-          cmake --build --preset release
-          ctest --preset release --output-on-failure
+      - name: Configure
+        run: cmake --preset release
+
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Test the bridge and the window
+        run: ctest --preset release --output-on-failure
 
       - name: Check the executable starts
         shell: pwsh

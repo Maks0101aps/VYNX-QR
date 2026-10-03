@@ -68,11 +68,14 @@ jobs:
       - name: Verify makensis
         run: makensis /VERSION
 
-      - name: Configure and test natively
-        run: |
-          cmake --preset release
-          cmake --build --preset release
-          ctest --preset release --output-on-failure
+      - name: Configure
+        run: cmake --preset release
+
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Test the bridge and the window
+        run: ctest --preset release --output-on-failure
 
       - name: Package
         run: cmake --build --preset release --target installer portable
