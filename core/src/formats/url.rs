@@ -67,7 +67,10 @@ pub fn analyze(input: &str) -> Option<UrlAnalysis> {
     // No scheme at all: only accept a well formed authority.
     let authority = split_authority_and_tail(trimmed).0;
     if valid_authority(authority) {
-        return Some(UrlAnalysis { normalized: format!("https://{trimmed}"), added_scheme: true });
+        return Some(UrlAnalysis {
+            normalized: format!("https://{trimmed}"),
+            added_scheme: true,
+        });
     }
     None
 }
@@ -86,7 +89,10 @@ pub fn encode(url: &str) -> AppResult<String> {
     };
     let scheme = scheme.to_ascii_lowercase();
     if !KNOWN_SCHEMES.contains(&scheme.as_str()) {
-        return Err(err_with(ErrorCode::InvalidUrl, format!("unsupported scheme `{scheme}`")));
+        return Err(err_with(
+            ErrorCode::InvalidUrl,
+            format!("unsupported scheme `{scheme}`"),
+        ));
     }
     if host_and_tail(rest).is_none() {
         return Err(err_with(ErrorCode::InvalidUrl, "missing host"));
@@ -208,21 +214,39 @@ mod tests {
 
     #[test]
     fn keeps_explicit_http_and_https_untouched() {
-        assert_eq!(normalized("https://example.com"), Some("https://example.com".into()));
-        assert_eq!(normalized("http://example.com/a?b=c#d"), Some("http://example.com/a?b=c#d".into()));
-        assert_eq!(normalized("HTTPS://Example.com"), Some("https://Example.com".into()));
+        assert_eq!(
+            normalized("https://example.com"),
+            Some("https://example.com".into())
+        );
+        assert_eq!(
+            normalized("http://example.com/a?b=c#d"),
+            Some("http://example.com/a?b=c#d".into())
+        );
+        assert_eq!(
+            normalized("HTTPS://Example.com"),
+            Some("https://Example.com".into())
+        );
     }
 
     #[test]
     fn adds_scheme_to_bare_domains() {
-        assert_eq!(normalized("github.com/vynx"), Some("https://github.com/vynx".into()));
+        assert_eq!(
+            normalized("github.com/vynx"),
+            Some("https://github.com/vynx".into())
+        );
         assert_eq!(normalized("github.com"), Some("https://github.com".into()));
-        assert_eq!(normalized("www.example.com"), Some("https://www.example.com".into()));
+        assert_eq!(
+            normalized("www.example.com"),
+            Some("https://www.example.com".into())
+        );
         assert_eq!(
             normalized("youtube.com/watch?v=dQw4w9WgXcQ"),
             Some("https://youtube.com/watch?v=dQw4w9WgXcQ".into())
         );
-        assert_eq!(normalized("example.com:8080/x"), Some("https://example.com:8080/x".into()));
+        assert_eq!(
+            normalized("example.com:8080/x"),
+            Some("https://example.com:8080/x".into())
+        );
     }
 
     #[test]
@@ -233,7 +257,10 @@ mod tests {
 
     #[test]
     fn handles_scheme_relative_addresses() {
-        assert_eq!(normalized("//example.com/x"), Some("https://example.com/x".into()));
+        assert_eq!(
+            normalized("//example.com/x"),
+            Some("https://example.com/x".into())
+        );
     }
 
     #[test]
@@ -254,7 +281,11 @@ mod tests {
             "WIFI:T:WPA;S:x;;",
             "tel:+380991234567",
         ] {
-            assert_eq!(normalized(input), None, "expected `{input}` not to be a URL");
+            assert_eq!(
+                normalized(input),
+                None,
+                "expected `{input}` not to be a URL"
+            );
         }
     }
 
@@ -266,20 +297,35 @@ mod tests {
 
     #[test]
     fn accepts_ipv4_literals() {
-        assert_eq!(normalized("192.168.0.1"), Some("https://192.168.0.1".into()));
-        assert_eq!(normalized("127.0.0.1:8080"), Some("https://127.0.0.1:8080".into()));
+        assert_eq!(
+            normalized("192.168.0.1"),
+            Some("https://192.168.0.1".into())
+        );
+        assert_eq!(
+            normalized("127.0.0.1:8080"),
+            Some("https://127.0.0.1:8080".into())
+        );
         assert_eq!(normalized("999.1.1.1"), None);
     }
 
     #[test]
     fn encode_rejects_unsupported_schemes() {
-        assert_eq!(encode("ftp://example.com").unwrap_err().code(), ErrorCode::InvalidUrl);
-        assert_eq!(encode("example.com").unwrap_err().code(), ErrorCode::InvalidUrl);
+        assert_eq!(
+            encode("ftp://example.com").unwrap_err().code(),
+            ErrorCode::InvalidUrl
+        );
+        assert_eq!(
+            encode("example.com").unwrap_err().code(),
+            ErrorCode::InvalidUrl
+        );
         assert_eq!(encode("").unwrap_err().code(), ErrorCode::InvalidUrl);
     }
 
     #[test]
     fn encode_returns_normalised_value() {
-        assert_eq!(encode("  https://example.com/x  ").expect("encode"), "https://example.com/x");
+        assert_eq!(
+            encode("  https://example.com/x  ").expect("encode"),
+            "https://example.com/x"
+        );
     }
 }

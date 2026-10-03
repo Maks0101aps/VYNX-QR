@@ -30,11 +30,11 @@ pub fn system_info() -> SystemInfo {
 
 #[cfg(windows)]
 mod platform {
+    use windows::core::HSTRING;
     use windows::Win32::Foundation::ERROR_SUCCESS;
     use windows::Win32::System::Registry::{
         RegGetValueW, HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD,
     };
-    use windows::core::HSTRING;
 
     fn read_dword(root: HKEY, subkey: &str, name: &str) -> Option<u32> {
         let subkey = HSTRING::from(subkey);

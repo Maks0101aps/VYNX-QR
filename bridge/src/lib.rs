@@ -222,6 +222,24 @@ pub mod ffi {
         encoded: String,
         normalization: String,
         notice: String,
+        /// True when the encoded form differs from what was typed, which is the
+        /// only case where the window should offer to keep the original.
+        changes_input: bool,
+    }
+
+    /// What the detector decided, together with the payload to actually encode.
+    ///
+    /// The payload is produced by the engine rather than rebuilt from
+    /// `Analysis::encoded`. That distinction matters: `encoded` is the finished
+    /// string that goes into the symbol, so for an email address it already
+    /// carries `mailto:`. Handing that string back to the email encoder produces
+    /// `mailto:mailto:hello@example.com`.
+    struct SmartPayload {
+        /// False when the input was blank. `payload` is then an empty text payload,
+        /// which cxx requires because it cannot express an absent shared struct.
+        detected: bool,
+        analysis: Analysis,
+        payload: Payload,
     }
 
     /// Straight RGBA pixels, for the clipboard.
@@ -252,42 +270,58 @@ pub mod ffi {
     }
 
     extern "Rust" {
-    /// Classify free-form input. Check `detected` on the result rather than
-    /// expecting an optional, because cxx cannot return one of a shared struct.
-    fn analyze(input: &str) -> Result<Analysis>;
+        /// Classify free-form input. Check `detected` on the result rather than
+        /// expecting an optional, because cxx cannot return one of a shared struct.
+        fn analyze(input: &str) -> Result<Analysis>;
 
-    /// Render a preview: encode, build, rasterise, verify.
-    fn generate(payload: &Payload, options: &RenderOptions) -> Result<GenerateResult>;
+        /// Classify free-form input and get the payload to encode in one call.
+        ///
+        /// The two travel together on purpose. Classification is only useful to the UI
+        /// because it also decides what gets encoded, and keeping them apart invites the
+        /// window to reassemble a payload from the encoded string, which is the one thing
+        /// it must never do.
+        fn smart_payload(input: &str) -> Result<SmartPayload>;
 
-    /// Render the vector form.
-    fn generate_svg(payload: &Payload, options: &RenderOptions, size_px: u32) -> Result<String>;
+        /// The "keep exactly what I typed" alternative to a detected URL.
+        ///
+        /// Offered only when the detector actually changed something, so this is the
+        /// escape hatch for normalisation rather than a second encoding path.
+        fn original_text_payload(input: &str) -> Payload;
 
-    /// Render straight to RGBA, for the clipboard.
-    fn generate_bitmap(payload: &Payload, options: &RenderOptions) -> Result<Bitmap>;
+        /// Render a preview: encode, build, rasterise, verify.
+        fn generate(payload: &Payload, options: &RenderOptions) -> Result<GenerateResult>;
 
-    /// True when the payload can be encoded, for inline validation.
-    fn is_encodable(payload: &Payload) -> bool;
+        /// Render the vector form.
+        fn generate_svg(payload: &Payload, options: &RenderOptions, size_px: u32)
+            -> Result<String>;
 
-    /// A human readable label for a payload kind, for the status line.
-    fn payload_label(kind: PayloadType) -> String;
+        /// Render straight to RGBA, for the clipboard.
+        fn generate_bitmap(payload: &Payload, options: &RenderOptions) -> Result<Bitmap>;
 
-    /// Read and validate a logo file.
-    fn load_logo(path: &str) -> Result<LogoAsset>;
+        /// True when the payload can be encoded, for inline validation.
+        fn is_encodable(payload: &Payload) -> bool;
 
-    fn system_info() -> SystemInfo;
+        /// A human readable label for a payload kind, for the status line.
+        fn payload_label(kind: PayloadType) -> String;
 
-    fn load_settings() -> Settings;
-    fn save_settings(settings: &Settings) -> Result<()>;
+        /// Read and validate a logo file.
+        fn load_logo(path: &str) -> Result<LogoAsset>;
 
-    /// Style defaults, so the window starts from the engine's own idea of them.
-    fn default_style() -> RenderOptions;
+        fn system_info() -> SystemInfo;
+
+        fn load_settings() -> Settings;
+        fn save_settings(settings: &Settings) -> Result<()>;
+
+        /// Style defaults, so the window starts from the engine's own idea of them.
+        fn default_style() -> RenderOptions;
     }
 }
 
 use ffi::{
-    Analysis, Bitmap, ContentKind, EcLevel, ExportFormat, GenerateResult, Logo, LogoAsset,
-    ModuleStyle, Payload, PayloadType, RenderOptions, Settings, SystemInfo, ThemeMode,
-    VerifyStatus, Warning, WifiSecurity,
+    Analysis, Bitmap, ContentKind, EcLevel, EmailPayload, ExportFormat, GenerateResult, GeoPayload,
+    Logo, LogoAsset, ModuleStyle, Payload, PayloadType, RenderOptions, Settings, SmartPayload,
+    SmsPayload, SystemInfo, ThemeMode, VCardPayload, VerifyStatus, Warning, WifiPayload,
+    WifiSecurity,
 };
 
 /// Wrap a core call so that a panic becomes an error instead of unwinding into
@@ -318,12 +352,16 @@ fn to_core_payload(value: &Payload) -> Result<vynx_qr_core::qr::payload::QrPaylo
         if value.text.is_empty() {
             return missing("text");
         }
-        QrPayload::Text { text: value.text.clone() }
+        QrPayload::Text {
+            text: value.text.clone(),
+        }
     } else if value.kind == PayloadType::Url {
         if value.url.is_empty() {
             return missing("url");
         }
-        QrPayload::Url { url: value.url.clone() }
+        QrPayload::Url {
+            url: value.url.clone(),
+        }
     } else if value.kind == PayloadType::Wifi {
         if value.wifi.ssid.is_empty() {
             return missing("network name");
@@ -359,7 +397,9 @@ fn to_core_payload(value: &Payload) -> Result<vynx_qr_core::qr::payload::QrPaylo
         if value.phone.is_empty() {
             return missing("number");
         }
-        QrPayload::Phone { number: value.phone.clone() }
+        QrPayload::Phone {
+            number: value.phone.clone(),
+        }
     } else if value.kind == PayloadType::Sms {
         if value.sms.number.is_empty() {
             return missing("number");
@@ -522,6 +562,191 @@ fn bridge_export_format(format: vynx_qr_core::settings::ExportFormat) -> ExportF
     }
 }
 
+/// Convert an engine payload into the bridge representation.
+///
+/// The counterpart of [`to_core_payload`]. Every kind is matched explicitly, so
+/// adding one to the engine is a compile error here rather than a payload that
+/// silently encodes as something else.
+fn from_core_payload(core: &vynx_qr_core::qr::payload::QrPayload) -> Payload {
+    use vynx_qr_core::qr::payload::{QrPayload, WifiSecurity as CoreSecurity};
+
+    let mut payload = Payload {
+        kind: PayloadType::Text,
+        text: String::new(),
+        url: String::new(),
+        wifi: WifiPayload {
+            ssid: String::new(),
+            password: String::new(),
+            security: WifiSecurity::Wpa,
+            hidden: false,
+        },
+        vcard: VCardPayload {
+            first_name: String::new(),
+            last_name: String::new(),
+            organization: String::new(),
+            job_title: String::new(),
+            phone: String::new(),
+            email: String::new(),
+            website: String::new(),
+            address: String::new(),
+            note: String::new(),
+        },
+        email: EmailPayload {
+            to: String::new(),
+            subject: String::new(),
+            body: String::new(),
+        },
+        phone: String::new(),
+        sms: SmsPayload {
+            number: String::new(),
+            message: String::new(),
+        },
+        geo: GeoPayload {
+            latitude: 0.0,
+            longitude: 0.0,
+            label: String::new(),
+        },
+    };
+
+    match core {
+        QrPayload::Text { text } => {
+            payload.kind = PayloadType::Text;
+            payload.text = text.clone();
+        }
+        QrPayload::Url { url } => {
+            payload.kind = PayloadType::Url;
+            payload.url = url.clone();
+        }
+        QrPayload::Wifi {
+            ssid,
+            password,
+            security,
+            hidden,
+        } => {
+            payload.kind = PayloadType::Wifi;
+            payload.wifi = WifiPayload {
+                ssid: ssid.clone(),
+                password: password.clone(),
+                security: match security {
+                    CoreSecurity::Wpa => WifiSecurity::Wpa,
+                    CoreSecurity::Wep => WifiSecurity::Wep,
+                    CoreSecurity::None => WifiSecurity::None,
+                },
+                hidden: *hidden,
+            };
+        }
+        QrPayload::VCard {
+            first_name,
+            last_name,
+            organization,
+            job_title,
+            phone,
+            email,
+            website,
+            address,
+            note,
+        } => {
+            payload.kind = PayloadType::VCard;
+            payload.vcard = VCardPayload {
+                first_name: first_name.clone(),
+                last_name: last_name.clone(),
+                organization: organization.clone(),
+                job_title: job_title.clone(),
+                phone: phone.clone(),
+                email: email.clone(),
+                website: website.clone(),
+                address: address.clone(),
+                note: note.clone(),
+            };
+        }
+        QrPayload::Email { to, subject, body } => {
+            payload.kind = PayloadType::Email;
+            payload.email = EmailPayload {
+                to: to.clone(),
+                subject: subject.clone(),
+                body: body.clone(),
+            };
+        }
+        QrPayload::Phone { number } => {
+            payload.kind = PayloadType::Phone;
+            payload.phone = number.clone();
+        }
+        QrPayload::Sms { number, message } => {
+            payload.kind = PayloadType::Sms;
+            payload.sms = SmsPayload {
+                number: number.clone(),
+                message: message.clone(),
+            };
+        }
+        QrPayload::Geo {
+            latitude,
+            longitude,
+            label,
+        } => {
+            payload.kind = PayloadType::Geo;
+            payload.geo = GeoPayload {
+                latitude: *latitude,
+                longitude: *longitude,
+                label: label.clone(),
+            };
+        }
+    }
+    payload
+}
+
+/// Turn free-form input into both the classification and the payload, so the
+/// window never has to reconstruct either from the encoded string.
+pub fn smart_payload(input: &str) -> Result<SmartPayload, String> {
+    use vynx_qr_core::qr::payload::QrPayload;
+
+    guard("Analysis", || {
+        let Some(found) = vynx_qr_core::detect::analyze_input_checked(input).map_err(describe)?
+        else {
+            let blank = Analysis {
+                detected: false,
+                kind: ContentKind::Text,
+                original: input.to_string(),
+                encoded: String::from(""),
+                normalization: String::from(""),
+                notice: String::from(""),
+                changes_input: false,
+            };
+            return Ok(SmartPayload {
+                detected: false,
+                analysis: blank,
+                payload: from_core_payload(&QrPayload::Text {
+                    text: String::new(),
+                }),
+            });
+        };
+
+        let analysis = Analysis {
+            detected: true,
+            kind: match found.kind {
+                vynx_qr_core::detect::ContentKind::Url => ContentKind::Url,
+                vynx_qr_core::detect::ContentKind::Email => ContentKind::Email,
+                vynx_qr_core::detect::ContentKind::Phone => ContentKind::Phone,
+                vynx_qr_core::detect::ContentKind::Text => ContentKind::Text,
+            },
+            original: found.input.clone(),
+            encoded: found.encoded.clone(),
+            changes_input: found.changes_the_input(),
+            normalization: found.normalization.clone().unwrap_or_default(),
+            notice: found.notice.clone().unwrap_or_default(),
+        };
+
+        Ok(SmartPayload {
+            detected: true,
+            analysis,
+            payload: from_core_payload(&found.payload),
+        })
+    })
+}
+
+pub fn original_text_payload(input: &str) -> Payload {
+    from_core_payload(&vynx_qr_core::detect::original_text_payload(input))
+}
+
 pub fn analyze(input: &str) -> Result<Analysis, String> {
     guard("Analysis", || {
         let Some(found) = vynx_qr_core::detect::analyze_input_checked(input).map_err(describe)?
@@ -530,9 +755,10 @@ pub fn analyze(input: &str) -> Result<Analysis, String> {
                 detected: false,
                 kind: ContentKind::Text,
                 original: input.to_string(),
-                encoded: String::new(),
-                normalization: String::new(),
-                notice: String::new(),
+                encoded: String::from(""),
+                normalization: String::from(""),
+                notice: String::from(""),
+                changes_input: false,
             });
         };
 
@@ -544,10 +770,11 @@ pub fn analyze(input: &str) -> Result<Analysis, String> {
                 vynx_qr_core::detect::ContentKind::Phone => ContentKind::Phone,
                 vynx_qr_core::detect::ContentKind::Text => ContentKind::Text,
             },
-            original: found.input,
-            encoded: found.encoded,
-            normalization: found.normalization.unwrap_or_default(),
-            notice: found.notice.unwrap_or_default(),
+            original: found.input.clone(),
+            encoded: found.encoded.clone(),
+            normalization: found.normalization.clone().unwrap_or_default(),
+            notice: found.notice.clone().unwrap_or_default(),
+            changes_input: found.changes_the_input(),
         })
     })
 }
@@ -584,7 +811,10 @@ pub fn generate(payload: &Payload, options: &RenderOptions) -> Result<GenerateRe
             warnings: result
                 .warnings
                 .into_iter()
-                .map(|warning| Warning { code: warning.code, message: warning.message })
+                .map(|warning| Warning {
+                    code: warning.code,
+                    message: warning.message,
+                })
                 .collect(),
             encoded: result.encoded,
         })
@@ -605,9 +835,12 @@ pub fn generate_svg(
 pub fn generate_bitmap(payload: &Payload, options: &RenderOptions) -> Result<Bitmap, String> {
     guard("Bitmap rendering", || {
         let request = to_request(payload, options)?;
-        let canvas =
-            vynx_qr_core::export::render_rgba(&request).map_err(describe)?;
-        Ok(Bitmap { width: canvas.width, height: canvas.height, pixels: canvas.pixels })
+        let canvas = vynx_qr_core::export::render_rgba(&request).map_err(describe)?;
+        Ok(Bitmap {
+            width: canvas.width,
+            height: canvas.height,
+            pixels: canvas.pixels,
+        })
     })
 }
 
@@ -650,7 +883,11 @@ pub fn payload_label(kind: PayloadType) -> String {
 pub fn load_logo(path: &str) -> Result<LogoAsset, String> {
     guard("Logo loading", || {
         let asset = vynx_qr_core::export::load_logo(path).map_err(describe)?;
-        Ok(LogoAsset { name: asset.name, width: asset.width, height: asset.height })
+        Ok(LogoAsset {
+            name: asset.name,
+            width: asset.width,
+            height: asset.height,
+        })
     })
 }
 
@@ -685,7 +922,10 @@ pub fn default_style() -> RenderOptions {
         quiet_zone: style.quiet_zone,
         logo_ratio: style.logo_ratio,
         has_logo: false,
-        logo: Logo { name: String::new(), data: Vec::new() },
+        logo: Logo {
+            name: String::new(),
+            data: Vec::new(),
+        },
     }
 }
 

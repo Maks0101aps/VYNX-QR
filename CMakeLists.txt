@@ -299,7 +299,9 @@ endif()
 # ---------------------------------------------------------------------------
 # Rust's standard library references parts of the Windows API a C++ program would
 # never otherwise touch, so a consumer of a Rust static library has to name them.
-# This is the usual set for an MSVC consumer of rustc output.
+# This is the usual set for an MSVC consumer of rustc output. It is declared here
+# rather than next to the application because both the window and the bridge test
+# link it, and the test exists in configurations where the window does not.
 set(VYNX_RUST_SYSTEM_LIBS
   ws2_32      # sockets, used by std::net
   ntdll       # native file operations
@@ -314,7 +316,9 @@ set(VYNX_RUST_SYSTEM_LIBS
   dwmapi      # window chrome, used by the native integration
 )
 
-target_link_libraries(VYNX_QR PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
+if(VYNX_BUILD_APP)
+  target_link_libraries(VYNX_QR PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
+endif()
 if(VYNX_BUILD_TESTS)
   target_link_libraries(vynx_bridge_test PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
 endif()

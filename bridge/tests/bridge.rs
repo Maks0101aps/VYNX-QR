@@ -5,8 +5,8 @@
 
 use vynx_qr_bridge::ffi::*;
 use vynx_qr_bridge::{
-    analyze, default_style, generate, generate_bitmap, generate_svg, is_encodable,
-    load_settings, payload_label, system_info,
+    analyze, default_style, generate, generate_bitmap, generate_svg, is_encodable, load_settings,
+    payload_label, system_info,
 };
 
 fn text_payload(text: &str) -> Payload {
@@ -40,8 +40,15 @@ fn text_payload(text: &str) -> Payload {
                 body: String::new(),
             },
             phone: String::new(),
-            sms: SmsPayload { number: String::new(), message: String::new() },
-            geo: GeoPayload { latitude: 0.0, longitude: 0.0, label: String::new() },
+            sms: SmsPayload {
+                number: String::new(),
+                message: String::new(),
+            },
+            geo: GeoPayload {
+                latitude: 0.0,
+                longitude: 0.0,
+                label: String::new(),
+            },
         }
     }
 }
@@ -64,7 +71,10 @@ fn analyse_classifies_a_bare_domain() {
     let analysis = analyze("github.com").expect("analyse");
     assert!(analysis.detected);
     assert!(analysis.kind == ContentKind::Url);
-    assert!(!analysis.normalization.is_empty(), "the added scheme must be announced");
+    assert!(
+        !analysis.normalization.is_empty(),
+        "the added scheme must be announced"
+    );
     assert_eq!(analysis.encoded, "https://github.com");
 }
 
@@ -97,14 +107,20 @@ fn generate_svg_is_a_real_vector_document() {
     let document = generate_svg(&text_payload("VYNX QR"), &default_style(), 512).expect("svg");
     assert!(document.contains("<svg"));
     assert!(document.trim_end().ends_with("</svg>"));
-    assert!(!document.contains("data:image"), "no rasterised payload without a logo");
+    assert!(
+        !document.contains("data:image"),
+        "no rasterised payload without a logo"
+    );
 }
 
 #[test]
 fn generate_bitmap_returns_rgba_pixels() {
     let bitmap = generate_bitmap(&text_payload("VYNX QR"), &default_style()).expect("bitmap");
     assert_eq!(bitmap.width, bitmap.height);
-    assert_eq!(bitmap.pixels.len(), (bitmap.width * bitmap.height * 4) as usize);
+    assert_eq!(
+        bitmap.pixels.len(),
+        (bitmap.width * bitmap.height * 4) as usize
+    );
 }
 
 #[test]
@@ -120,8 +136,13 @@ fn wifi_credentials_keep_their_surrounding_spaces() {
 
 #[test]
 fn a_missing_field_for_the_chosen_kind_is_reported() {
-    let payload = Payload { kind: PayloadType::Wifi, ..text_payload("") };
-    let error = generate(&payload, &default_style()).err().expect("must refuse");
+    let payload = Payload {
+        kind: PayloadType::Wifi,
+        ..text_payload("")
+    };
+    let error = generate(&payload, &default_style())
+        .err()
+        .expect("must refuse");
     assert!(error.contains("network name"), "unhelpful error: {error}");
     assert!(!is_encodable(&payload));
 }
@@ -130,7 +151,11 @@ fn a_missing_field_for_the_chosen_kind_is_reported() {
 fn a_populated_field_for_the_wrong_kind_is_not_used() {
     // `kind` says Wi-Fi but only the URL field was filled. The bridge must refuse
     // rather than quietly encoding the empty SSID.
-    let payload = Payload { kind: PayloadType::Wifi, url: "https://vynx.dev".into(), ..text_payload("") };
+    let payload = Payload {
+        kind: PayloadType::Wifi,
+        url: "https://vynx.dev".into(),
+        ..text_payload("")
+    };
     assert!(generate(&payload, &default_style()).is_err());
 }
 
@@ -139,7 +164,10 @@ fn unicode_survives_the_boundary_unchanged() {
     for text in ["Привіт, Україно 🇺🇦", "こんにちは", "مرحبا", "🙂"] {
         let result = generate(&text_payload(text), &default_style()).expect("generate");
         assert_eq!(result.encoded, text);
-        assert!(result.verification_status == VerifyStatus::Verified, "failed for {text}");
+        assert!(
+            result.verification_status == VerifyStatus::Verified,
+            "failed for {text}"
+        );
     }
 }
 
@@ -149,7 +177,10 @@ fn a_logo_raises_error_correction_and_still_verifies() {
     options.size_px = 1024;
     options.ec_level = EcLevel::L;
     options.has_logo = true;
-    options.logo = Logo { name: "dot.png".into(), data: one_pixel_png() };
+    options.logo = Logo {
+        name: "dot.png".into(),
+        data: one_pixel_png(),
+    };
 
     let result = generate(&text_payload("VYNX QR"), &options).expect("generate");
     assert!(result.ec_level == EcLevel::H, "a logo must raise the level");
@@ -162,9 +193,17 @@ fn an_unrecognised_payload_kind_is_refused() {
     // A shared enum carries a `repr` byte, so a caller built against a newer
     // header can send a kind this build has never seen. Encoding it as Geo would
     // silently produce a pin in the middle of the Atlantic.
-    let payload = Payload { kind: PayloadType { repr: 200 }, ..text_payload("hello") };
-    let error = generate(&payload, &default_style()).err().expect("must refuse");
-    assert!(error.contains("Unsupported payload type"), "unexpected error: {error}");
+    let payload = Payload {
+        kind: PayloadType { repr: 200 },
+        ..text_payload("hello")
+    };
+    let error = generate(&payload, &default_style())
+        .err()
+        .expect("must refuse");
+    assert!(
+        error.contains("Unsupported payload type"),
+        "unexpected error: {error}"
+    );
     assert!(!is_encodable(&payload));
     assert!(payload_label(PayloadType { repr: 201 }).starts_with("Unsupported"));
 }

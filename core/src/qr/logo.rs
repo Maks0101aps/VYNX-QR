@@ -4,8 +4,8 @@
 //! Decoding happens once per render, which keeps this side free of any long lived
 //! cache that would have to be invalidated.
 
-use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 
 use crate::error::{err_with, AppResult, ErrorCode};
 
@@ -43,7 +43,10 @@ impl LogoAsset {
             return Err(err_with(ErrorCode::LogoDecodeFailed, "empty file"));
         }
         if bytes.len() > MAX_LOGO_BYTES {
-            return Err(err_with(ErrorCode::LogoTooBig, format!("{} bytes", bytes.len())));
+            return Err(err_with(
+                ErrorCode::LogoTooBig,
+                format!("{} bytes", bytes.len()),
+            ));
         }
         let image = image::load_from_memory(bytes)
             .map_err(|error| err_with(ErrorCode::LogoDecodeFailed, error))?;
@@ -55,7 +58,12 @@ impl LogoAsset {
         if width > MAX_LOGO_EDGE || height > MAX_LOGO_EDGE {
             return Err(err_with(ErrorCode::LogoTooBig, format!("{width}x{height}")));
         }
-        Ok(Self { name, width, height, pixels: rgba.into_raw() })
+        Ok(Self {
+            name,
+            width,
+            height,
+            pixels: rgba.into_raw(),
+        })
     }
 
     #[inline]
@@ -76,12 +84,25 @@ impl LogoAsset {
     /// small logos readable without introducing ringing.
     pub fn scaled(&self, width: u32, height: u32) -> ScaledLogo {
         if width == self.width && height == self.height {
-            return ScaledLogo { width, height, pixels: self.pixels.clone() };
+            return ScaledLogo {
+                width,
+                height,
+                pixels: self.pixels.clone(),
+            };
         }
         let source = image::RgbaImage::from_raw(self.width, self.height, self.pixels.clone())
             .unwrap_or_else(|| image::RgbaImage::new(self.width.max(1), self.height.max(1)));
-        let resized = image::imageops::resize(&source, width, height, image::imageops::FilterType::Triangle);
-        ScaledLogo { width, height, pixels: resized.into_raw() }
+        let resized = image::imageops::resize(
+            &source,
+            width,
+            height,
+            image::imageops::FilterType::Triangle,
+        );
+        ScaledLogo {
+            width,
+            height,
+            pixels: resized.into_raw(),
+        }
     }
 
     /// Re-encode as PNG so the SVG export can embed the logo losslessly.
@@ -144,22 +165,41 @@ mod tests {
     #[test]
     fn rejects_garbage() {
         assert_eq!(
-            LogoAsset::from_bytes("x.png".into(), b"not an image").unwrap_err().code(),
+            LogoAsset::from_bytes("x.png".into(), b"not an image")
+                .unwrap_err()
+                .code(),
             ErrorCode::LogoDecodeFailed
         );
-        assert_eq!(LogoAsset::from_bytes("x.png".into(), &[]).unwrap_err().code(), ErrorCode::LogoDecodeFailed);
+        assert_eq!(
+            LogoAsset::from_bytes("x.png".into(), &[])
+                .unwrap_err()
+                .code(),
+            ErrorCode::LogoDecodeFailed
+        );
     }
 
     #[test]
     fn rejects_arbitrary_bytes() {
-        let input = LogoInput { name: "x.png".into(), data: b"!!!!".to_vec() };
-        assert_eq!(LogoAsset::decode(&input).unwrap_err().code(), ErrorCode::LogoDecodeFailed);
+        let input = LogoInput {
+            name: "x.png".into(),
+            data: b"!!!!".to_vec(),
+        };
+        assert_eq!(
+            LogoAsset::decode(&input).unwrap_err().code(),
+            ErrorCode::LogoDecodeFailed
+        );
     }
 
     #[test]
     fn rejects_empty_input() {
-        let input = LogoInput { name: "x.png".into(), data: Vec::new() };
-        assert_eq!(LogoAsset::decode(&input).unwrap_err().code(), ErrorCode::LogoDecodeFailed);
+        let input = LogoInput {
+            name: "x.png".into(),
+            data: Vec::new(),
+        };
+        assert_eq!(
+            LogoAsset::decode(&input).unwrap_err().code(),
+            ErrorCode::LogoDecodeFailed
+        );
     }
 
     #[test]

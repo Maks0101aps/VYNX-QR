@@ -67,7 +67,10 @@ mod tests {
     #[test]
     fn percent_encoding_escapes_spaces_and_unicode() {
         assert_eq!(percent_encode("a b"), "a%20b");
-        assert_eq!(percent_encode("Привіт"), "%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82");
+        assert_eq!(
+            percent_encode("Привіт"),
+            "%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82"
+        );
         assert_eq!(percent_encode("🇺🇦"), "%F0%9F%87%BA%F0%9F%87%A6");
     }
 
@@ -79,7 +82,10 @@ mod tests {
 
     #[test]
     fn wifi_escaping_covers_special_characters() {
-        assert_eq!(escape_wifi_value(r#"My;Password:123"#), r#"My\;Password\:123"#);
+        assert_eq!(
+            escape_wifi_value(r#"My;Password:123"#),
+            r#"My\;Password\:123"#
+        );
         assert_eq!(escape_wifi_value(r#"back\slash"#), r#"back\\slash"#);
         assert_eq!(escape_wifi_value(r#"a,b"c"#), r#"a\,b\"c"#);
         assert_eq!(escape_wifi_value("VYNX Home"), "VYNX Home");

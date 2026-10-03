@@ -24,12 +24,18 @@ mod tests {
 
     #[test]
     fn encodes_number_and_message() {
-        assert_eq!(encode("+380991234567", "Hi there").expect("encode"), "SMSTO:+380991234567:Hi there");
+        assert_eq!(
+            encode("+380991234567", "Hi there").expect("encode"),
+            "SMSTO:+380991234567:Hi there"
+        );
     }
 
     #[test]
     fn allows_an_empty_message() {
-        assert_eq!(encode("+380991234567", "").expect("encode"), "SMSTO:+380991234567:");
+        assert_eq!(
+            encode("+380991234567", "").expect("encode"),
+            "SMSTO:+380991234567:"
+        );
     }
 
     #[test]
@@ -42,11 +48,17 @@ mod tests {
 
     #[test]
     fn neutralises_colons_in_the_message() {
-        assert_eq!(encode("+380991234567", "a:b").expect("encode"), "SMSTO:+380991234567:a b");
+        assert_eq!(
+            encode("+380991234567", "a:b").expect("encode"),
+            "SMSTO:+380991234567:a b"
+        );
     }
 
     #[test]
     fn rejects_invalid_number() {
-        assert_eq!(encode("nope", "hi").unwrap_err().code(), ErrorCode::InvalidPhone);
+        assert_eq!(
+            encode("nope", "hi").unwrap_err().code(),
+            ErrorCode::InvalidPhone
+        );
     }
 }

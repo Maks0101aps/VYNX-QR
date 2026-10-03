@@ -81,7 +81,12 @@ impl Settings {
 /// having to guess at the environment.
 pub fn default_path() -> Option<PathBuf> {
     let appdata = std::env::var_os("APPDATA")?;
-    Some(PathBuf::from(appdata).join("VYNX").join("QR").join("settings.json"))
+    Some(
+        PathBuf::from(appdata)
+            .join("VYNX")
+            .join("QR")
+            .join("settings.json"),
+    )
 }
 
 /// Read settings from disk, falling back to defaults when the file is missing or
@@ -120,8 +125,7 @@ pub fn save(settings: &Settings) -> AppResult<()> {
 /// Persist settings to an explicit path. See [`load_from`] on why this exists.
 pub fn save_to(path: &Path, settings: &Settings) -> AppResult<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
+        fs::create_dir_all(parent).map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
     }
     let json = serde_json::to_string_pretty(settings)
         .map_err(|error| err_with(ErrorCode::SettingsFailed, error))?;
@@ -146,7 +150,11 @@ mod tests {
 
     #[test]
     fn round_trips_through_json() {
-        let settings = Settings { theme: ThemeMode::Dark, default_size: 512, ..Settings::default() };
+        let settings = Settings {
+            theme: ThemeMode::Dark,
+            default_size: 512,
+            ..Settings::default()
+        };
         let json = serde_json::to_string(&settings).expect("serialize");
         let restored: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored, settings);
@@ -161,9 +169,15 @@ mod tests {
 
     #[test]
     fn sanitising_rejects_out_of_range_sizes() {
-        let settings = Settings { default_size: 37, ..Settings::default() };
+        let settings = Settings {
+            default_size: 37,
+            ..Settings::default()
+        };
         assert_eq!(settings.sanitized().default_size, 1024);
-        let ok = Settings { default_size: 2048, ..Settings::default() };
+        let ok = Settings {
+            default_size: 2048,
+            ..Settings::default()
+        };
         assert_eq!(ok.sanitized().default_size, 2048);
     }
 
@@ -171,7 +185,11 @@ mod tests {
     fn saves_and_loads_through_an_explicit_path() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("nested").join("settings.json");
-        let settings = Settings { theme: ThemeMode::Dark, default_size: 512, ..Settings::default() };
+        let settings = Settings {
+            theme: ThemeMode::Dark,
+            default_size: 512,
+            ..Settings::default()
+        };
 
         save_to(&path, &settings).expect("save");
         assert!(path.is_file(), "the parent directory must be created");
@@ -209,7 +227,10 @@ mod tests {
         // Only meaningful where APPDATA exists, which is the platform we ship on.
         if let Some(path) = default_path() {
             let text = path.to_string_lossy().replace('/', "\\");
-            assert!(text.ends_with("VYNX\\QR\\settings.json"), "unexpected path: {text}");
+            assert!(
+                text.ends_with("VYNX\\QR\\settings.json"),
+                "unexpected path: {text}"
+            );
         }
     }
 }

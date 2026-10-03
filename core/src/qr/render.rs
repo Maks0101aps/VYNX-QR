@@ -90,7 +90,12 @@ impl Rgba {
             let value = (f32::from(s) * sa + f32::from(d) * da * (1.0 - sa)) / out_a;
             value.clamp(0.0, 255.0).round() as u8
         };
-        Rgba::new(mix(self.r, dst.r), mix(self.g, dst.g), mix(self.b, dst.b), (out_a * 255.0).round() as u8)
+        Rgba::new(
+            mix(self.r, dst.r),
+            mix(self.g, dst.g),
+            mix(self.b, dst.b),
+            (out_a * 255.0).round() as u8,
+        )
     }
 }
 
@@ -109,7 +114,11 @@ impl Canvas {
         for _ in 0..(width as usize) * (height as usize) {
             pixels.extend_from_slice(&[fill.r, fill.g, fill.b, fill.a]);
         }
-        Self { width, height, pixels }
+        Self {
+            width,
+            height,
+            pixels,
+        }
     }
 
     #[inline]
@@ -143,7 +152,9 @@ impl Canvas {
     pub fn to_greyscale(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity((self.width as usize) * (self.height as usize));
         for chunk in self.pixels.chunks_exact(4) {
-            let luma = 0.299 * f32::from(chunk[0]) + 0.587 * f32::from(chunk[1]) + 0.114 * f32::from(chunk[2]);
+            let luma = 0.299 * f32::from(chunk[0])
+                + 0.587 * f32::from(chunk[1])
+                + 0.114 * f32::from(chunk[2]);
             out.push(luma.round().clamp(0.0, 255.0) as u8);
         }
         out
@@ -186,7 +197,13 @@ pub fn rasterize(matrix: &QrMatrix, style: &ResolvedStyle, size_px: u32) -> Canv
     canvas
 }
 
-fn draw_finders(matrix: &QrMatrix, style: &ResolvedStyle, cell: u32, padding: u32, canvas: &mut Canvas) {
+fn draw_finders(
+    matrix: &QrMatrix,
+    style: &ResolvedStyle,
+    cell: u32,
+    padding: u32,
+    canvas: &mut Canvas,
+) {
     let n = matrix.size as u32;
     let far = n.saturating_sub(7);
     let origins = [(0u32, 0u32), (far, 0u32), (0u32, far)];
@@ -198,9 +215,23 @@ fn draw_finders(matrix: &QrMatrix, style: &ResolvedStyle, cell: u32, padding: u3
         // clearly readable even with rounded corners everywhere else.
         fill_rounded_rect(canvas, x, y, side, side, style.foreground);
         let inset = cell;
-        fill_rounded_rect(canvas, x + inset, y + inset, side - 2 * inset, side - 2 * inset, style.background);
+        fill_rounded_rect(
+            canvas,
+            x + inset,
+            y + inset,
+            side - 2 * inset,
+            side - 2 * inset,
+            style.background,
+        );
         let inset = 2 * cell;
-        fill_rounded_rect(canvas, x + inset, y + inset, 3 * cell, 3 * cell, style.foreground);
+        fill_rounded_rect(
+            canvas,
+            x + inset,
+            y + inset,
+            3 * cell,
+            3 * cell,
+            style.foreground,
+        );
     }
 }
 
@@ -309,7 +340,12 @@ fn inside_rounded(px: u32, py: u32, x: u32, y: u32, width: u32, height: u32, rad
 pub fn encode_png(canvas: &Canvas) -> AppResult<Vec<u8>> {
     let mut out = Vec::new();
     PngEncoder::new_with_quality(&mut out, CompressionType::Default, PngFilter::Adaptive)
-        .write_image(&canvas.pixels, canvas.width, canvas.height, ExtendedColorType::Rgba8)
+        .write_image(
+            &canvas.pixels,
+            canvas.width,
+            canvas.height,
+            ExtendedColorType::Rgba8,
+        )
         .map_err(|error| err_with(ErrorCode::RenderFailed, error))?;
     Ok(out)
 }
@@ -334,7 +370,10 @@ mod tests {
         assert_eq!(Rgba::from_hex("#000000").expect("black"), Rgba::BLACK);
         assert_eq!(Rgba::from_hex("ffffff").expect("white"), Rgba::WHITE);
         assert_eq!(Rgba::from_hex("#FFF").expect("short"), Rgba::WHITE);
-        assert_eq!(Rgba::from_hex("#102030").expect("full"), Rgba::new(0x10, 0x20, 0x30, 255));
+        assert_eq!(
+            Rgba::from_hex("#102030").expect("full"),
+            Rgba::new(0x10, 0x20, 0x30, 255)
+        );
         assert!(Rgba::from_hex("nope").is_err());
         assert!(Rgba::from_hex("#12345").is_err());
     }

@@ -51,7 +51,10 @@ mod tests {
     #[test]
     fn encodes_coordinates() {
         assert_eq!(encode(50.45, 30.52, "").expect("encode"), "geo:50.45,30.52");
-        assert_eq!(encode(-33.8688, 151.2093, "").expect("encode"), "geo:-33.8688,151.2093");
+        assert_eq!(
+            encode(-33.8688, 151.2093, "").expect("encode"),
+            "geo:-33.8688,151.2093"
+        );
     }
 
     #[test]
@@ -70,11 +73,26 @@ mod tests {
 
     #[test]
     fn validates_ranges() {
-        assert_eq!(encode(91.0, 0.0, "").unwrap_err().code(), ErrorCode::InvalidLatitude);
-        assert_eq!(encode(-90.1, 0.0, "").unwrap_err().code(), ErrorCode::InvalidLatitude);
-        assert_eq!(encode(0.0, 181.0, "").unwrap_err().code(), ErrorCode::InvalidLongitude);
-        assert_eq!(encode(0.0, -180.1, "").unwrap_err().code(), ErrorCode::InvalidLongitude);
-        assert_eq!(encode(f64::NAN, 0.0, "").unwrap_err().code(), ErrorCode::InvalidLatitude);
+        assert_eq!(
+            encode(91.0, 0.0, "").unwrap_err().code(),
+            ErrorCode::InvalidLatitude
+        );
+        assert_eq!(
+            encode(-90.1, 0.0, "").unwrap_err().code(),
+            ErrorCode::InvalidLatitude
+        );
+        assert_eq!(
+            encode(0.0, 181.0, "").unwrap_err().code(),
+            ErrorCode::InvalidLongitude
+        );
+        assert_eq!(
+            encode(0.0, -180.1, "").unwrap_err().code(),
+            ErrorCode::InvalidLongitude
+        );
+        assert_eq!(
+            encode(f64::NAN, 0.0, "").unwrap_err().code(),
+            ErrorCode::InvalidLatitude
+        );
     }
 
     #[test]

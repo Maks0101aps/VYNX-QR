@@ -36,7 +36,9 @@ pub const MAX_LOGO_DIMENSION: u32 = 4096;
 /// Convenience constructor used by tests and the story of the crate.
 pub fn request_for(text: &str) -> RenderRequest {
     RenderRequest {
-        payload: qr::payload::QrPayload::Text { text: text.to_string() },
+        payload: qr::payload::QrPayload::Text {
+            text: text.to_string(),
+        },
         style: QrStyle::default(),
         ec_level: qr::payload::EcLevel::H,
         size_px: 512,

@@ -48,7 +48,11 @@ fn fold_line(line: &str) -> String {
     for ch in line.chars() {
         let width = ch.len_utf8();
         // A continuation line starts with a space, so it carries one octet less.
-        let limit = if out.is_empty() { FOLD_LIMIT } else { FOLD_LIMIT - 1 };
+        let limit = if out.is_empty() {
+            FOLD_LIMIT
+        } else {
+            FOLD_LIMIT - 1
+        };
         if used + width > limit {
             out.push_str("\r\n ");
             used = 1;
@@ -80,9 +84,19 @@ pub fn encode(
     address: &str,
     note: &str,
 ) -> AppResult<String> {
-    if [first_name, last_name, organization, job_title, phone, email, website, address, note]
-        .iter()
-        .all(|field| field.trim().is_empty())
+    if [
+        first_name,
+        last_name,
+        organization,
+        job_title,
+        phone,
+        email,
+        website,
+        address,
+        note,
+    ]
+    .iter()
+    .all(|field| field.trim().is_empty())
     {
         return Err(err_with(ErrorCode::EmptyInput, "vCard has no content"));
     }
@@ -96,7 +110,9 @@ pub fn encode(
 
     let mut lines: Vec<String> = vec!["BEGIN:VCARD".into(), "VERSION:3.0".into()];
     if !full_name.is_empty() {
-        lines.push("N:".to_string() + &escape_value(last_name) + ";" + &escape_value(first_name) + ";;;");
+        lines.push(
+            "N:".to_string() + &escape_value(last_name) + ";" + &escape_value(first_name) + ";;;",
+        );
         lines.push(format!("FN:{}", escape_value(&full_name)));
     }
     push_if_present(&mut lines, "ORG", organization);
@@ -167,9 +183,12 @@ mod tests {
 
     #[test]
     fn address_is_a_structured_adr() {
-        let payload = encode("A", "B", "", "", "", "", "", "1 Main St, Kyiv, Ukraine", "")
-            .expect("encode");
-        let line = payload.lines().find(|l| l.starts_with("ADR")).expect("ADR line");
+        let payload =
+            encode("A", "B", "", "", "", "", "", "1 Main St, Kyiv, Ukraine", "").expect("encode");
+        let line = payload
+            .lines()
+            .find(|l| l.starts_with("ADR"))
+            .expect("ADR line");
         // Seven components: two leading empties, the street, four trailing empties.
         assert_eq!(line, r"ADR;TYPE=HOME:;;1 Main St\, Kyiv\, Ukraine;;;");
     }
@@ -180,11 +199,18 @@ mod tests {
         let payload = encode("A", "B", "", "", "", "", "", "", &note).expect("encode");
         let lines: Vec<&str> = payload.split("\r\n").collect();
         for line in &lines {
-            assert!(line.len() <= FOLD_LIMIT, "line too long: {} octets", line.len());
+            assert!(
+                line.len() <= FOLD_LIMIT,
+                "line too long: {} octets",
+                line.len()
+            );
         }
         // Continuation lines start with the single space that the folding inserts.
         let continuations = lines.iter().filter(|line| line.starts_with(' ')).count();
-        assert!(continuations >= 2, "a 200 octet note must be folded at least twice");
+        assert!(
+            continuations >= 2,
+            "a 200 octet note must be folded at least twice"
+        );
         // Folding is transport, not content: unfolding restores the original.
         let unfolded = payload.replace("\r\n ", "");
         assert!(unfolded.contains(&format!("NOTE:{note}")));
@@ -206,18 +232,33 @@ mod tests {
     #[test]
     fn short_lines_are_left_alone() {
         let payload = full().expect("encode");
-        assert!(!payload.contains("\r\n "), "nothing here is long enough to fold");
+        assert!(
+            !payload.contains("\r\n "),
+            "nothing here is long enough to fold"
+        );
     }
 
     #[test]
     fn escapes_delimiters_and_newlines() {
-        let payload = encode("A", "B", "", "", "", "", "", "", "line1\nline2; semi, comma").expect("encode");
+        let payload = encode(
+            "A",
+            "B",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "line1\nline2; semi, comma",
+        )
+        .expect("encode");
         assert!(payload.contains("NOTE:line1\\nline2\\; semi\\, comma"));
     }
 
     #[test]
     fn keeps_emoji_and_non_latin_scripts() {
-        let payload = encode("Taro", "山田", "", "", "", "", "", "", "こんにちは 🇯🇵").expect("encode");
+        let payload =
+            encode("Taro", "山田", "", "", "", "", "", "", "こんにちは 🇯🇵").expect("encode");
         assert!(payload.contains("FN:Taro 山田"));
         assert!(payload.contains("NOTE:こんにちは 🇯🇵"));
     }
@@ -234,13 +275,20 @@ mod tests {
 
     #[test]
     fn rejects_empty_contact() {
-        assert_eq!(encode("", "", "", "", "", "", "", "", "").unwrap_err().code(), ErrorCode::EmptyInput);
+        assert_eq!(
+            encode("", "", "", "", "", "", "", "", "")
+                .unwrap_err()
+                .code(),
+            ErrorCode::EmptyInput
+        );
     }
 
     #[test]
     fn rejects_invalid_email() {
         assert_eq!(
-            encode("A", "B", "", "", "", "not-an-email", "", "", "").unwrap_err().code(),
+            encode("A", "B", "", "", "", "not-an-email", "", "", "")
+                .unwrap_err()
+                .code(),
             ErrorCode::InvalidEmail
         );
     }

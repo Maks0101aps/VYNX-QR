@@ -24,20 +24,35 @@ pub fn encode(
         return Err(err_with(ErrorCode::InvalidWifi, "ssid is blank"));
     }
     if ssid.chars().count() > 32 {
-        return Err(err_with(ErrorCode::InvalidWifi, "ssid longer than 32 characters"));
+        return Err(err_with(
+            ErrorCode::InvalidWifi,
+            "ssid longer than 32 characters",
+        ));
     }
     if ssid.contains('\n') || ssid.contains('\r') {
-        return Err(err_with(ErrorCode::InvalidWifi, "ssid contains a line break"));
+        return Err(err_with(
+            ErrorCode::InvalidWifi,
+            "ssid contains a line break",
+        ));
     }
 
     if security != WifiSecurity::None && password.trim().is_empty() {
-        return Err(err_with(ErrorCode::InvalidWifi, "password required for this security type"));
+        return Err(err_with(
+            ErrorCode::InvalidWifi,
+            "password required for this security type",
+        ));
     }
     if password.chars().count() > 63 {
-        return Err(err_with(ErrorCode::InvalidWifi, "password longer than 63 characters"));
+        return Err(err_with(
+            ErrorCode::InvalidWifi,
+            "password longer than 63 characters",
+        ));
     }
     if password.contains('\n') || password.contains('\r') {
-        return Err(err_with(ErrorCode::InvalidWifi, "password contains a line break"));
+        return Err(err_with(
+            ErrorCode::InvalidWifi,
+            "password contains a line break",
+        ));
     }
 
     let mut payload = String::with_capacity(64 + ssid.len() + password.len());
@@ -91,11 +106,23 @@ mod tests {
 
     #[test]
     fn rejects_invalid_input() {
-        assert_eq!(encode("  ", "pw", WifiSecurity::Wpa, false).unwrap_err().code(), ErrorCode::InvalidWifi);
-        assert_eq!(encode("SSID", "", WifiSecurity::Wpa, false).unwrap_err().code(), ErrorCode::InvalidWifi);
+        assert_eq!(
+            encode("  ", "pw", WifiSecurity::Wpa, false)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidWifi
+        );
+        assert_eq!(
+            encode("SSID", "", WifiSecurity::Wpa, false)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidWifi
+        );
         assert!(encode("SSID", "pw", WifiSecurity::Wep, false).is_ok());
         assert_eq!(
-            encode(&"a".repeat(33), "pw", WifiSecurity::Wpa, false).unwrap_err().code(),
+            encode(&"a".repeat(33), "pw", WifiSecurity::Wpa, false)
+                .unwrap_err()
+                .code(),
             ErrorCode::InvalidWifi
         );
     }
@@ -130,9 +157,24 @@ mod tests {
 
     #[test]
     fn still_rejects_a_blank_ssid_or_password() {
-        assert_eq!(encode("   ", "pw", WifiSecurity::Wpa, false).unwrap_err().code(), ErrorCode::InvalidWifi);
-        assert_eq!(encode("\t\n", "pw", WifiSecurity::Wpa, false).unwrap_err().code(), ErrorCode::InvalidWifi);
-        assert_eq!(encode("SSID", "   ", WifiSecurity::Wpa, false).unwrap_err().code(), ErrorCode::InvalidWifi);
+        assert_eq!(
+            encode("   ", "pw", WifiSecurity::Wpa, false)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidWifi
+        );
+        assert_eq!(
+            encode("\t\n", "pw", WifiSecurity::Wpa, false)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidWifi
+        );
+        assert_eq!(
+            encode("SSID", "   ", WifiSecurity::Wpa, false)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidWifi
+        );
     }
 
     /// An open network has no password, so an empty one is expected rather than an

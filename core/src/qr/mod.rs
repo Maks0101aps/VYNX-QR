@@ -52,23 +52,30 @@ impl QrMatrix {
 
 /// Build a QR matrix for `payload` at the requested error correction level.
 pub fn build_matrix(payload: &str, ec: EcLevel) -> AppResult<QrMatrix> {
-    let code = qrcode::QrCode::with_error_correction_level(payload.as_bytes(), ec.into())
-        .map_err(|error| match error {
+    let code = qrcode::QrCode::with_error_correction_level(payload.as_bytes(), ec.into()).map_err(
+        |error| match error {
             qrcode::types::QrError::DataTooLong => err_with(
                 ErrorCode::ContentTooLong,
                 format!("{} bytes exceeds capacity at {}", payload.len(), ec.label()),
             ),
             other => err_with(ErrorCode::RenderFailed, other),
-        })?;
+        },
+    )?;
 
     // `QrCode::width()` already excludes the quiet zone.
     let size = code.width();
     if size < 21 || size % 4 != 1 {
-        return Err(err_with(ErrorCode::RenderFailed, "unexpected matrix geometry"));
+        return Err(err_with(
+            ErrorCode::RenderFailed,
+            "unexpected matrix geometry",
+        ));
     }
     let grid = code.to_colors();
     if grid.len() != size * size {
-        return Err(err_with(ErrorCode::RenderFailed, "unexpected matrix geometry"));
+        return Err(err_with(
+            ErrorCode::RenderFailed,
+            "unexpected matrix geometry",
+        ));
     }
 
     let modules = grid
@@ -79,7 +86,11 @@ pub fn build_matrix(payload: &str, ec: EcLevel) -> AppResult<QrMatrix> {
     // Only standard versions are produced, where modules = 17 + 4 * version.
     let version = ((size - 17) / 4) as u8;
 
-    Ok(QrMatrix { size, version, modules })
+    Ok(QrMatrix {
+        size,
+        version,
+        modules,
+    })
 }
 
 /// Everything that influences the appearance of a QR code.
@@ -165,7 +176,10 @@ pub struct Warning {
 
 impl Warning {
     pub fn new(code: &str, message: impl Into<String>) -> Self {
-        Self { code: code.to_string(), message: message.into() }
+        Self {
+            code: code.to_string(),
+            message: message.into(),
+        }
     }
 }
 
@@ -257,17 +271,21 @@ pub fn render(request: &RenderRequest) -> AppResult<RenderResult> {
                 crate::error::messages::LOGO_TOO_LARGE.to_string(),
             ));
         }
-        if verification.status != VerifyStatus::Verified && reduced.status == VerifyStatus::Verified {
+        if verification.status != VerifyStatus::Verified && reduced.status == VerifyStatus::Verified
+        {
             verification.status = VerifyStatus::Failed;
         }
     }
 
     if verification.status == VerifyStatus::Mismatch {
-        warnings.push(Warning::new("verificationMismatch", crate::error::messages::VERIFICATION_FAILED));
+        warnings.push(Warning::new(
+            "verificationMismatch",
+            crate::error::messages::VERIFICATION_FAILED,
+        ));
     }
 
-    let png = render::encode_png(&canvas)
-        .map_err(|error| err_with(ErrorCode::RenderFailed, error))?;
+    let png =
+        render::encode_png(&canvas).map_err(|error| err_with(ErrorCode::RenderFailed, error))?;
 
     let total_modules = matrix.size as u32 + 2 * resolved.quiet_zone;
 
@@ -302,7 +320,11 @@ impl RenderRequest {
     /// Check the payload is encodable and return a usable side length.
     pub fn validate(&self) -> AppResult<u32> {
         crate::qr::payload::ensure_not_empty(&self.payload)?;
-        let size = if self.size_px == 0 { 1024 } else { self.size_px };
+        let size = if self.size_px == 0 {
+            1024
+        } else {
+            self.size_px
+        };
         if size > crate::MAX_RENDER_SIZE {
             return Err(err_with(
                 ErrorCode::RenderFailed,
@@ -385,7 +407,9 @@ mod tests {
     #[test]
     fn renders_a_verified_qr() {
         let request = RenderRequest {
-            payload: QrPayload::Text { text: "VYNX QR".into() },
+            payload: QrPayload::Text {
+                text: "VYNX QR".into(),
+            },
             style: QrStyle::default(),
             ec_level: EcLevel::M,
             size_px: 512,

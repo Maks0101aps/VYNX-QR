@@ -4,7 +4,6 @@
 //! between runs: the same string always produces the same classification, which
 //! is what makes the behaviour testable and predictable.
 
-
 use crate::error::AppResult;
 use crate::formats::{phone, url};
 use crate::qr::payload::QrPayload;
@@ -90,7 +89,9 @@ pub fn looks_like_email(input: &str) -> bool {
             && label.len() <= 63
             && !label.starts_with('-')
             && !label.ends_with('-')
-            && label.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            && label
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
     }) && labels[labels.len() - 1].chars().all(|c| c.is_alphabetic())
 }
 
@@ -107,10 +108,15 @@ pub fn analyze_input(input: &str) -> Option<Analysis> {
     }
 
     if let Some(url_analysis) = url::analyze(trimmed) {
-        let payload = QrPayload::Url { url: url_analysis.normalized.clone() };
+        let payload = QrPayload::Url {
+            url: url_analysis.normalized.clone(),
+        };
         let encoded = payload.encode().ok()?;
         let normalization = if url_analysis.added_scheme {
-            Some(format!("{} will be added", scheme_prefix(&url_analysis.normalized)))
+            Some(format!(
+                "{} will be added",
+                scheme_prefix(&url_analysis.normalized)
+            ))
         } else {
             None
         };
@@ -128,8 +134,11 @@ pub fn analyze_input(input: &str) -> Option<Analysis> {
         let address = address.split(['?', '#']).next().unwrap_or(address);
         let address = address.trim();
         if looks_like_email(address) {
-            let payload =
-                QrPayload::Email { to: address.to_string(), subject: String::new(), body: String::new() };
+            let payload = QrPayload::Email {
+                to: address.to_string(),
+                subject: String::new(),
+                body: String::new(),
+            };
             let encoded = payload.encode().ok()?;
             return Some(Analysis {
                 input: input.to_string(),
@@ -144,7 +153,11 @@ pub fn analyze_input(input: &str) -> Option<Analysis> {
     }
 
     if looks_like_email(trimmed) {
-        let payload = QrPayload::Email { to: trimmed.to_string(), subject: String::new(), body: String::new() };
+        let payload = QrPayload::Email {
+            to: trimmed.to_string(),
+            subject: String::new(),
+            body: String::new(),
+        };
         let encoded = payload.encode().ok()?;
         return Some(Analysis {
             input: input.to_string(),
@@ -157,7 +170,9 @@ pub fn analyze_input(input: &str) -> Option<Analysis> {
     }
 
     if phone::looks_like_phone(trimmed) {
-        let payload = QrPayload::Phone { number: phone::normalize(trimmed) };
+        let payload = QrPayload::Phone {
+            number: phone::normalize(trimmed),
+        };
         let encoded = payload.encode().ok()?;
         return Some(Analysis {
             input: input.to_string(),
@@ -169,7 +184,9 @@ pub fn analyze_input(input: &str) -> Option<Analysis> {
         });
     }
 
-    let payload = QrPayload::Text { text: trimmed.to_string() };
+    let payload = QrPayload::Text {
+        text: trimmed.to_string(),
+    };
     let encoded = payload.encode().ok()?;
     Some(Analysis {
         input: input.to_string(),
@@ -197,7 +214,22 @@ fn scheme_prefix(url: &str) -> &'static str {
 
 /// Build the "keep what I typed" alternative for a detected URL.
 pub fn original_text_payload(input: &str) -> QrPayload {
-    QrPayload::Text { text: input.trim().to_string() }
+    QrPayload::Text {
+        text: input.trim().to_string(),
+    }
+}
+
+impl Analysis {
+    /// True when the encoded form differs from what was typed, so the UI has
+    /// something worth telling the user about.
+    ///
+    /// This is deliberately asked of the domain model rather than inferred by
+    /// comparing strings in the presentation layer: only the detector knows
+    /// whether a change was a normalisation it chose to make, or merely a
+    /// re-render of the same characters.
+    pub fn changes_the_input(&self) -> bool {
+        self.encoded != self.input.trim()
+    }
 }
 
 #[cfg(test)]
@@ -213,13 +245,19 @@ mod tests {
         assert_eq!(kind_of("https://github.com/"), Some(ContentKind::Url));
         assert_eq!(kind_of("http://example.com"), Some(ContentKind::Url));
         assert_eq!(kind_of("github.com"), Some(ContentKind::Url));
-        assert_eq!(kind_of("youtube.com/watch?v=dQw4w9WgXcQ"), Some(ContentKind::Url));
+        assert_eq!(
+            kind_of("youtube.com/watch?v=dQw4w9WgXcQ"),
+            Some(ContentKind::Url)
+        );
     }
 
     #[test]
     fn announces_url_normalisation() {
         let analysis = analyze_input("github.com/vynx").expect("analysis");
-        assert_eq!(analysis.normalization.as_deref(), Some("https:// will be added"));
+        assert_eq!(
+            analysis.normalization.as_deref(),
+            Some("https:// will be added")
+        );
         assert_eq!(analysis.encoded, "https://github.com/vynx");
     }
 

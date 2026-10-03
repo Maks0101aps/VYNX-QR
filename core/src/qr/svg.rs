@@ -51,7 +51,11 @@ pub fn export(matrix: &QrMatrix, style: &ResolvedStyle, size_px: u32) -> AppResu
     svg.push_str(&format!(
         "  <g fill=\"{}\" shape-rendering=\"{}\">\n",
         style.foreground.to_hex(),
-        if style.module_style == ModuleStyle::Square { "crispEdges" } else { "geometricPrecision" }
+        if style.module_style == ModuleStyle::Square {
+            "crispEdges"
+        } else {
+            "geometricPrecision"
+        }
     ));
     match style.module_style {
         ModuleStyle::Square => write_merged_runs(matrix, quiet, &mut svg),
@@ -191,7 +195,10 @@ mod tests {
 
     #[test]
     fn rounded_style_uses_rounded_rectangles() {
-        let style = QrStyle { module_style: ModuleStyle::Rounded, ..QrStyle::default() };
+        let style = QrStyle {
+            module_style: ModuleStyle::Rounded,
+            ..QrStyle::default()
+        };
         let document = svg_for(style);
         assert!(document.contains("rx=\"0.28\""));
         assert!(document.contains("rx=\"0.9\""));

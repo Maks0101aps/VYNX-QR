@@ -12,7 +12,10 @@ const SEPARATORS: [char; 6] = [' ', '-', '(', ')', '.', '\u{00a0}'];
 /// premium rate prefix survives untouched.
 pub fn normalize(input: &str) -> String {
     let trimmed = input.trim();
-    let trimmed = trimmed.strip_prefix("tel:").or_else(|| trimmed.strip_prefix("TEL:")).unwrap_or(trimmed);
+    let trimmed = trimmed
+        .strip_prefix("tel:")
+        .or_else(|| trimmed.strip_prefix("TEL:"))
+        .unwrap_or(trimmed);
     let trimmed = trimmed.trim();
     if trimmed.starts_with('+') {
         let mut out = String::with_capacity(trimmed.len());
@@ -39,9 +42,17 @@ pub fn looks_like_phone(input: &str) -> bool {
         .get(..4)
         .is_some_and(|prefix| prefix.eq_ignore_ascii_case("tel:"))
         && trimmed[4..].chars().any(|c| c.is_ascii_digit());
-    let body = trimmed.strip_prefix("tel:").or_else(|| trimmed.strip_prefix("TEL:")).unwrap_or(trimmed).trim();
+    let body = trimmed
+        .strip_prefix("tel:")
+        .or_else(|| trimmed.strip_prefix("TEL:"))
+        .unwrap_or(trimmed)
+        .trim();
 
-    if body.is_empty() || body.chars().any(|c| !c.is_ascii_digit() && !SEPARATORS.contains(&c) && c != '+') {
+    if body.is_empty()
+        || body
+            .chars()
+            .any(|c| !c.is_ascii_digit() && !SEPARATORS.contains(&c) && c != '+')
+    {
         return false;
     }
     if body.chars().filter(|c| *c == '+').count() > 1 {
@@ -68,7 +79,10 @@ mod tests {
 
     #[test]
     fn keeps_international_prefix() {
-        assert_eq!(encode("+380991234567").expect("encode"), "tel:+380991234567");
+        assert_eq!(
+            encode("+380991234567").expect("encode"),
+            "tel:+380991234567"
+        );
     }
 
     #[test]
@@ -79,7 +93,10 @@ mod tests {
 
     #[test]
     fn strips_tel_scheme() {
-        assert_eq!(encode("tel:+380991234567").expect("encode"), "tel:+380991234567");
+        assert_eq!(
+            encode("tel:+380991234567").expect("encode"),
+            "tel:+380991234567"
+        );
     }
 
     #[test]

@@ -67,7 +67,11 @@ pub struct AppError {
 
 impl AppError {
     pub fn new(code: ErrorCode, message: &'static str) -> Self {
-        Self { code, message, detail: String::new() }
+        Self {
+            code,
+            message,
+            detail: String::new(),
+        }
     }
 
     pub fn with_detail(mut self, detail: impl fmt::Display) -> Self {
@@ -176,6 +180,9 @@ mod tests {
     #[test]
     fn display_keeps_detail_for_developer_console() {
         let error = err_with(ErrorCode::FileWriteFailed, "access denied");
-        assert_eq!(error.to_string(), "[fileWriteFailed] VYNX QR could not save the file. (access denied)");
+        assert_eq!(
+            error.to_string(),
+            "[fileWriteFailed] VYNX QR could not save the file. (access denied)"
+        );
     }
 }

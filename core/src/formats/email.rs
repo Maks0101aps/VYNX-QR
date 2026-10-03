@@ -15,8 +15,7 @@ pub fn encode(to: &str, subject: &str, body: &str) -> AppResult<String> {
     for recipient in &parts {
         // Whitespace is only tolerated as the separator padding, never inside an
         // address, and it must not survive into the emitted URI.
-        if recipient.chars().any(char::is_whitespace)
-            || !crate::detect::looks_like_email(recipient)
+        if recipient.chars().any(char::is_whitespace) || !crate::detect::looks_like_email(recipient)
         {
             return Err(err_with(ErrorCode::InvalidEmail, recipient));
         }
@@ -49,7 +48,10 @@ mod tests {
 
     #[test]
     fn bare_recipient() {
-        assert_eq!(encode("hi@example.com", "", "").expect("encode"), "mailto:hi@example.com");
+        assert_eq!(
+            encode("hi@example.com", "", "").expect("encode"),
+            "mailto:hi@example.com"
+        );
     }
 
     #[test]
@@ -70,8 +72,17 @@ mod tests {
 
     #[test]
     fn rejects_invalid_input() {
-        assert_eq!(encode("", "", "").unwrap_err().code(), ErrorCode::InvalidEmail);
-        assert_eq!(encode("nope", "", "").unwrap_err().code(), ErrorCode::InvalidEmail);
-        assert_eq!(encode("a b@x.dev", "", "").unwrap_err().code(), ErrorCode::InvalidEmail);
+        assert_eq!(
+            encode("", "", "").unwrap_err().code(),
+            ErrorCode::InvalidEmail
+        );
+        assert_eq!(
+            encode("nope", "", "").unwrap_err().code(),
+            ErrorCode::InvalidEmail
+        );
+        assert_eq!(
+            encode("a b@x.dev", "", "").unwrap_err().code(),
+            ErrorCode::InvalidEmail
+        );
     }
 }

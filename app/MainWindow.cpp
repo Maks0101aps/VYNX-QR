@@ -85,9 +85,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
                                       Tokens::SpaceXLarge, Tokens::SpaceLarge);
   composerLayout_->setSpacing(Tokens::SpaceMedium);
 
-  headline_ = new QLabel(QStringLiteral("Create a QR code"), composer_);
-  headline_->setProperty("role", QStringLiteral("heading"));
-  composerLayout_->addWidget(headline_);
+  auto *headline = new QLabel(QStringLiteral("Create a QR code"), composer_);
+  headline->setProperty("role", QStringLiteral("heading"));
+  composerLayout_->addWidget(headline);
 
   auto *hint = new QLabel(QStringLiteral("Paste a link, text, email address or phone number."),
                           composer_);
@@ -103,11 +103,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   inputField_->setClearButtonEnabled(true);
   composerLayout_->addWidget(inputField_);
 
-  chip_ = new QLabel(composer_);
+chipRow_ = new QWidget(composer_);
+  auto *chipLayout = new QHBoxLayout(chipRow_);
+  chipLayout->setContentsMargins(0, 0, 0, 0);
+  chipLayout->setSpacing(Tokens::SpaceSmall);
+
+  chip_ = new QLabel(chipRow_);
   chip_->setProperty("role", QStringLiteral("caption"));
-  chip_->setWordWrap(true);
-  chip_->hide();
-  composerLayout_->addWidget(chip_);
+  chipLayout->addWidget(chip_);
+  chipLayout->addStretch(1);
+
+  originalToggle_ = new QPushButton(chipRow_);
+  originalToggle_->setProperty("flat", true);
+  originalToggle_->setCursor(Qt::PointingHandCursor);
+  originalToggle_->setAccessibleName(QStringLiteral("Keep exactly what was typed"));
+  chipLayout->addWidget(originalToggle_);
+
+  chipRow_->hide();
+  composerLayout_->addWidget(chipRow_);
 
   // The spacer keeps the action row at the bottom, so the preview stays the
   // visual centre of the window however long the input is.
@@ -178,6 +191,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   connect(copy_, &QPushButton::clicked, this, &MainWindow::onCopy);
   connect(save_, &QPushButton::clicked, this, &MainWindow::onSave);
   connect(clear_, &QPushButton::clicked, this, &MainWindow::onClearInput);
+  connect(originalToggle_, &QPushButton::clicked, this, &MainWindow::onToggleOriginal);
 
   auto *copyShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+C")), this);
   connect(copyShortcut, &QShortcut::activated, this, &MainWindow::onCopy);
@@ -203,15 +217,37 @@ void MainWindow::onInputChanged() {
 
   const std::string text = trimmed.toStdString();
   try {
-    const auto analysis = vynx::analyze(rust::Str(text));
-    detected_ = analysis.detected;
-    normalizationNotice_ = toQString(analysis.normalization);
-    detectedKind_ = contentKindLabel(analysis.kind);
+    // Classification and the payload travel together on purpose. The payload is
+    // the engine's, not something rebuilt here from the encoded string, which
+    // already carries a scheme and would be encoded a second time.
+    const vynx::SmartPayload smart = vynx::smart_payload(rust::Str(text));
+
+    detected_ = smart.detected;
+    changesInput_ = smart.analysis.changes_input;
+    detectedPayload_ = smart.payload;
+    detectedKind_ = contentKindLabel(smart.analysis.kind);
+    normalizationNotice_ = toQString(smart.analysis.normalization);
+
+    // A new input invalidates the previous choice: the user is no longer looking
+    // at the text they opted out of.
+    useOriginalText_ = false;
   } catch (const rust::Error &error) {
     showError(engineError(error));
     return;
   }
 
+  updateChip();
+  refresh();
+}
+
+void MainWindow::onToggleOriginal() {
+  // Only offered when the detector actually changed something, so toggling it
+  // always has an effect the user can see.
+  if (!changesInput_) {
+    return;
+  }
+  useOriginalText_ = !useOriginalText_;
+  ++generation_;
   updateChip();
   refresh();
 }
@@ -229,12 +265,25 @@ void MainWindow::onClearInput() {
 }
 
 void MainWindow::updateChip() {
-  if (!detected_ || normalizationNotice_.isEmpty()) {
-    chip_->hide();
+  if (!detected_) {
+    chipRow_->hide();
     return;
   }
-  chip_->setText(QStringLiteral("%1 detected · %2").arg(detectedKind_, normalizationNotice_));
-  chip_->show();
+
+  QStringList parts;
+  parts << detectedKind_;
+  if (useOriginalText_) {
+    parts << QStringLiteral("using exactly what you typed");
+  } else if (!normalizationNotice_.isEmpty()) {
+    parts << normalizationNotice_;
+  }
+  chip_->setText(parts.join(QStringLiteral(" · ")));
+
+  // The escape hatch exists only when the engine changed the text. Offering it
+  // for an untouched URL would imply something was rewritten.
+  originalToggle_->setVisible(changesInput_ && !useOriginalText_);
+  originalToggle_->setText(QStringLiteral("Use original text"));
+  chipRow_->show();
 }
 
 void MainWindow::refresh() {
@@ -324,40 +373,15 @@ void MainWindow::showError(const QString &message) {
 bool MainWindow::hasCode() const { return current_.width > 0; }
 
 vynx::Payload MainWindow::currentPayload() const {
-  const std::string trimmed = inputText_.trimmed().toStdString();
-
-  // When the detector normalised the input, honour that unless the user chose to
-  // keep exactly what they typed. This is the same rule the old web build had,
-  // and the whole reason `Use original text` exists.
-  if (detected_ && !useOriginalText_) {
-    const auto analysis = vynx::analyze(rust::Str(trimmed));
-    const QString encoded = toQString(analysis.encoded);
-    if (analysis.kind == vynx::ContentKind::Url) {
-      vynx::Payload payload;
-      payload.kind = vynx::PayloadType::Url;
-      payload.url = rust::String(encoded.toStdString());
-      return payload;
-    }
-    if (analysis.kind == vynx::ContentKind::Email) {
-      vynx::Payload payload;
-      payload.kind = vynx::PayloadType::Email;
-      payload.email.to = rust::String(encoded.toStdString());
-      return payload;
-    }
-    if (analysis.kind == vynx::ContentKind::Phone) {
-      vynx::Payload payload;
-      payload.kind = vynx::PayloadType::Phone;
-      payload.phone = rust::String(encoded.toStdString());
-      return payload;
-    }
+  // The escape hatch is a text payload built by the engine, so it goes through
+  // the same typed path rather than being assembled here.
+  if (useOriginalText_) {
+    return vynx::original_text_payload(rust::Str(inputText_.trimmed().toStdString()));
   }
-
-  vynx::Payload payload;
-  payload.kind = vynx::PayloadType::Text;
-  payload.text = rust::String(trimmed);
-  payload.url = rust::String("");
-  payload.phone = rust::String("");
-  return payload;
+  // Otherwise the payload is the one the engine produced. Rebuilding it from
+  // `Analysis::encoded` is what produced "mailto:mailto:hello@example.com":
+  // that string is the finished symbol content, not a domain value.
+  return detectedPayload_;
 }
 
 vynx::RenderOptions MainWindow::currentOptions(std::uint32_t size) const {

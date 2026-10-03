@@ -46,7 +46,11 @@ pub fn render_rgba(request: &RenderRequest) -> AppResult<Canvas> {
     let resolved = resolve(&request)?;
     let payload = crate::qr::encode_payload(&request.payload)?;
     let matrix = build_matrix(&payload, effective_ec(&request))?;
-    Ok(crate::qr::render::rasterize(&matrix, &resolved, request.size_px))
+    Ok(crate::qr::render::rasterize(
+        &matrix,
+        &resolved,
+        request.size_px,
+    ))
 }
 
 /// Read a logo file from disk, refusing anything oversized before decoding.
@@ -71,8 +75,7 @@ pub fn load_logo(path: &str) -> AppResult<crate::qr::logo::LogoAsset> {
         return Err(err_with(ErrorCode::LogoTooBig, metadata.len()));
     }
 
-    let bytes =
-        std::fs::read(file).map_err(|error| err_with(ErrorCode::FileReadFailed, error))?;
+    let bytes = std::fs::read(file).map_err(|error| err_with(ErrorCode::FileReadFailed, error))?;
     let asset = LogoAsset::from_bytes(file_name(file), &bytes)?;
     check_logo_dimensions(asset.width, asset.height)?;
     Ok(asset)
@@ -183,7 +186,10 @@ mod tests {
     fn clipboard_rendering_produces_rgba() {
         let canvas = render_rgba(&request()).expect("rgba");
         assert_eq!(canvas.width, canvas.height);
-        assert_eq!(canvas.pixels.len(), (canvas.width * canvas.height * 4) as usize);
+        assert_eq!(
+            canvas.pixels.len(),
+            (canvas.width * canvas.height * 4) as usize
+        );
     }
 
     #[test]
@@ -205,14 +211,20 @@ mod tests {
 
     #[test]
     fn loading_a_blank_path_is_rejected() {
-        assert_eq!(load_logo("   ").unwrap_err().code(), ErrorCode::LogoDecodeFailed);
+        assert_eq!(
+            load_logo("   ").unwrap_err().code(),
+            ErrorCode::LogoDecodeFailed
+        );
     }
 
     #[test]
     fn a_logo_raises_error_correction_to_high() {
         let mut request = request();
         request.ec_level = EcLevel::L;
-        request.style = QrStyle { logo: Some(logo()), ..QrStyle::default() };
+        request.style = QrStyle {
+            logo: Some(logo()),
+            ..QrStyle::default()
+        };
         let result = render_png(&request).expect("render");
         assert_eq!(result.ec_level, EcLevel::H);
         assert!(result.ec_adjusted);
@@ -224,7 +236,10 @@ mod tests {
     fn a_logo_reports_the_bump_in_warnings() {
         let mut request = request();
         request.ec_level = EcLevel::M;
-        request.style = QrStyle { logo: Some(logo()), ..QrStyle::default() };
+        request.style = QrStyle {
+            logo: Some(logo()),
+            ..QrStyle::default()
+        };
         let result = render_png(&request).expect("render");
         assert!(result.warnings.iter().any(|w| w.code == "ecAdjusted"));
     }

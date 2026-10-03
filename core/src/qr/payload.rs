@@ -157,9 +157,12 @@ impl QrPayload {
         match self {
             Self::Text { text } => crate::formats::text::encode(text),
             Self::Url { url } => crate::formats::url::encode(url),
-            Self::Wifi { ssid, password, security, hidden } => {
-                crate::formats::wifi::encode(ssid, password, *security, *hidden)
-            }
+            Self::Wifi {
+                ssid,
+                password,
+                security,
+                hidden,
+            } => crate::formats::wifi::encode(ssid, password, *security, *hidden),
             Self::VCard {
                 first_name,
                 last_name,
@@ -184,9 +187,11 @@ impl QrPayload {
             Self::Email { to, subject, body } => crate::formats::email::encode(to, subject, body),
             Self::Phone { number } => crate::formats::phone::encode(number),
             Self::Sms { number, message } => crate::formats::sms::encode(number, message),
-            Self::Geo { latitude, longitude, label } => {
-                crate::formats::geo::encode(*latitude, *longitude, label)
-            }
+            Self::Geo {
+                latitude,
+                longitude,
+                label,
+            } => crate::formats::geo::encode(*latitude, *longitude, label),
         }
     }
 
@@ -199,7 +204,11 @@ impl QrPayload {
             }
             Self::Url { url } => url.clone(),
             Self::Wifi { ssid, .. } => ssid.clone(),
-            Self::VCard { first_name, last_name, .. } => {
+            Self::VCard {
+                first_name,
+                last_name,
+                ..
+            } => {
                 let name = format!("{first_name} {last_name}").trim().to_string();
                 if name.is_empty() {
                     "Contact".to_string()
@@ -272,7 +281,9 @@ mod tests {
 
     #[test]
     fn phone_payload_reports_its_kind() {
-        let payload = QrPayload::Phone { number: "+380991234567".into() };
+        let payload = QrPayload::Phone {
+            number: "+380991234567".into(),
+        };
         assert_eq!(payload.kind(), "phone");
         assert_eq!(payload.encode().expect("encode"), "tel:+380991234567");
     }
@@ -298,8 +309,16 @@ mod tests {
     /// survive the round trip through the engine untouched.
     #[test]
     fn unicode_survives_untouched() {
-        for text in ["Привіт, Україно 🇺🇦", "こんにちは", "مرحبا", "🙂", "a\u{200B}b"] {
-            let payload = QrPayload::Text { text: text.to_string() };
+        for text in [
+            "Привіт, Україно 🇺🇦",
+            "こんにちは",
+            "مرحبا",
+            "🙂",
+            "a\u{200B}b",
+        ] {
+            let payload = QrPayload::Text {
+                text: text.to_string(),
+            };
             let encoded = payload.encode().expect("encode");
             assert_eq!(encoded, text);
         }

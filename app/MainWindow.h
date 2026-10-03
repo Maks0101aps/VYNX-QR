@@ -45,6 +45,8 @@ private slots:
   void onSave();
   void onOpenSettings();
   void onClearInput();
+  /// Switch between the normalised payload and exactly what was typed.
+  void onToggleOriginal();
 
 private:
   /// Re-run detection and rendering for the current input.
@@ -62,6 +64,8 @@ private:
   void showPreview(const QImage &image);
   void showError(const QString &message);
   void setVerification(vynx::VerifyStatus status);
+
+  /// Rebuild the chip row: what was detected, what changed, and the way out.
   void updateChip();
 
   /// Copy the current code to the clipboard as a real image.
@@ -70,7 +74,7 @@ private:
   /// Ask for a destination and write the chosen format.
   void saveToDisk();
 
-  /// Build the payload the engine should encode from the current input.
+  /// What the engine decided to encode for the current input.
   [[nodiscard]] vynx::Payload currentPayload() const;
 
   vynx::RenderOptions currentOptions(std::uint32_t size) const;
@@ -79,10 +83,21 @@ private:
   QTimer debounce_;
 
   QString inputText_;
-  QString normalizationNotice_;
   QString detectedKind_;
+  QString normalizationNotice_;
+  /// True when the detector changed the text, which is the only case where the
+  /// original is offered as an alternative.
+  bool changesInput_ = false;
   bool detected_ = false;
+  /// True when the user chose the raw text over the detected payload.
   bool useOriginalText_ = false;
+
+  /// The payload the engine produced for the input, kept rather than rebuilt.
+  ///
+  /// Reconstructing it here from `Analysis::encoded` is how `mailto:` ended up
+  /// doubled: that string is the finished symbol content, not a domain value.
+  vynx::Payload detectedPayload_;
+
   /// Bumped on every request; a result from an older generation is discarded, so
   /// typing quickly can never leave a stale code on screen.
   std::uint64_t generation_ = 0;
@@ -92,8 +107,9 @@ private:
   vynx::Settings settings_;
 
   QLineEdit *inputField_ = nullptr;
+  QWidget *chipRow_ = nullptr;
   QLabel *chip_ = nullptr;
-  QLabel *headline_ = nullptr;
+  QPushButton *originalToggle_ = nullptr;
   QLabel *preview_ = nullptr;
   QLabel *verification_ = nullptr;
   QLabel *details_ = nullptr;

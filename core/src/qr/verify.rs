@@ -4,7 +4,6 @@
 //! it reaches the user interface. The status line reports what actually happened,
 //! so `Scan verified` is a measured fact rather than a decoration.
 
-
 use crate::qr::render::Canvas;
 
 /// Result of the internal round trip.
@@ -36,7 +35,11 @@ pub struct Verification {
 
 impl Verification {
     fn failed() -> Self {
-        Self { status: VerifyStatus::Failed, decoded: None, reduced: None }
+        Self {
+            status: VerifyStatus::Failed,
+            decoded: None,
+            reduced: None,
+        }
     }
 }
 
@@ -97,15 +100,25 @@ mod tests {
     #[test]
     fn round_trips_a_url() {
         let canvas = render("https://github.com/VYNX", &QrStyle::default(), EcLevel::M);
-        assert_eq!(decode_canvas(&canvas).as_deref(), Some("https://github.com/VYNX"));
-        assert!(verify_payload("https://github.com/VYNX", &canvas).status.is_verified());
+        assert_eq!(
+            decode_canvas(&canvas).as_deref(),
+            Some("https://github.com/VYNX")
+        );
+        assert!(verify_payload("https://github.com/VYNX", &canvas)
+            .status
+            .is_verified());
     }
 
     #[test]
     fn round_trips_rounded_modules() {
-        let style = QrStyle { module_style: ModuleStyle::Rounded, ..QrStyle::default() };
+        let style = QrStyle {
+            module_style: ModuleStyle::Rounded,
+            ..QrStyle::default()
+        };
         let canvas = render("https://github.com/VYNX", &style, EcLevel::M);
-        assert!(verify_payload("https://github.com/VYNX", &canvas).status.is_verified());
+        assert!(verify_payload("https://github.com/VYNX", &canvas)
+            .status
+            .is_verified());
     }
 
     #[test]
@@ -125,7 +138,11 @@ mod tests {
 
     #[test]
     fn detects_inverted_colours_as_unreadable() {
-        let style = QrStyle { foreground: "#FFFFFF".into(), background: "#000000".into(), ..QrStyle::default() };
+        let style = QrStyle {
+            foreground: "#FFFFFF".into(),
+            background: "#000000".into(),
+            ..QrStyle::default()
+        };
         let canvas = render("https://example.com", &style, EcLevel::M);
         let verification = verify_payload("https://example.com", &canvas);
         assert_eq!(verification.status, VerifyStatus::Failed);

@@ -8,8 +8,8 @@
 use vynx_qr_core::export::{render_png, render_svg};
 use vynx_qr_core::qr::logo::LogoAsset;
 use vynx_qr_core::qr::payload::{EcLevel, QrPayload, WifiSecurity};
-use vynx_qr_core::qr::{QrStyle, RenderRequest};
 use vynx_qr_core::qr::verify::VerifyStatus;
+use vynx_qr_core::qr::{QrStyle, RenderRequest};
 
 /// The text a scanner recovers must equal the text that went in.
 fn round_trip(payload: &QrPayload) {
@@ -34,12 +34,16 @@ fn round_trip(payload: &QrPayload) {
 
 #[test]
 fn text_round_trips() {
-    round_trip(&QrPayload::Text { text: "VYNX QR".into() });
+    round_trip(&QrPayload::Text {
+        text: "VYNX QR".into(),
+    });
 }
 
 #[test]
 fn url_round_trips() {
-    round_trip(&QrPayload::Url { url: "https://github.com/Maks0101aps/VYNX-QR".into() });
+    round_trip(&QrPayload::Url {
+        url: "https://github.com/Maks0101aps/VYNX-QR".into(),
+    });
 }
 
 #[test]
@@ -53,7 +57,9 @@ fn email_round_trips() {
 
 #[test]
 fn phone_round_trips() {
-    round_trip(&QrPayload::Phone { number: "+380991234567".into() });
+    round_trip(&QrPayload::Phone {
+        number: "+380991234567".into(),
+    });
 }
 
 #[test]
@@ -112,7 +118,9 @@ fn unicode_round_trips_exactly() {
         "Ω≈ç√∫˜µ≤≥÷",
         "🧑‍💻 developer",
     ] {
-        round_trip(&QrPayload::Text { text: text.to_string() });
+        round_trip(&QrPayload::Text {
+            text: text.to_string(),
+        });
     }
 }
 
@@ -138,9 +146,14 @@ fn a_logo_survives_the_round_trip() {
     assert!(logo.width > 0 && logo.height > 0);
 
     let request = RenderRequest {
-        payload: QrPayload::Text { text: "VYNX QR".into() },
+        payload: QrPayload::Text {
+            text: "VYNX QR".into(),
+        },
         style: QrStyle {
-            logo: Some(vynx_qr_core::qr::LogoInput { name: "dot.png".into(), data: logo_png() }),
+            logo: Some(vynx_qr_core::qr::LogoInput {
+                name: "dot.png".into(),
+                data: logo_png(),
+            }),
             logo_ratio: 0.2,
             ..QrStyle::default()
         },
@@ -158,20 +171,32 @@ fn a_logo_survives_the_round_trip() {
 fn every_export_size_produces_a_decodable_code() {
     for size in [256u32, 512, 1024, 2048] {
         let request = RenderRequest {
-            payload: QrPayload::Url { url: "https://vynx.dev".into() },
+            payload: QrPayload::Url {
+                url: "https://vynx.dev".into(),
+            },
             style: QrStyle::default(),
             ec_level: EcLevel::M,
             size_px: size,
         };
         let result = render_png(&request).expect("render");
-        assert_eq!(result.verification.status, VerifyStatus::Verified, "failed at {size}px");
-        assert!(result.width <= size, "{size}px request produced {}px", result.width);
+        assert_eq!(
+            result.verification.status,
+            VerifyStatus::Verified,
+            "failed at {size}px"
+        );
+        assert!(
+            result.width <= size,
+            "{size}px request produced {}px",
+            result.width
+        );
     }
 }
 
 #[test]
 fn svg_export_matches_the_raster_payload() {
-    let payload = QrPayload::Url { url: "https://vynx.dev".into() };
+    let payload = QrPayload::Url {
+        url: "https://vynx.dev".into(),
+    };
     let request = RenderRequest {
         payload: payload.clone(),
         style: QrStyle::default(),
@@ -188,7 +213,9 @@ fn svg_export_matches_the_raster_payload() {
 #[test]
 fn rounded_modules_still_verify() {
     let request = RenderRequest {
-        payload: QrPayload::Text { text: "rounded".into() },
+        payload: QrPayload::Text {
+            text: "rounded".into(),
+        },
         style: QrStyle {
             module_style: vynx_qr_core::qr::payload::ModuleStyle::Rounded,
             ..QrStyle::default()
@@ -196,7 +223,10 @@ fn rounded_modules_still_verify() {
         ec_level: EcLevel::H,
         size_px: 1024,
     };
-    assert_eq!(render_png(&request).expect("render").verification.status, VerifyStatus::Verified);
+    assert_eq!(
+        render_png(&request).expect("render").verification.status,
+        VerifyStatus::Verified
+    );
 }
 
 /// A minimal valid PNG, used wherever a logo is needed.
