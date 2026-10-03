@@ -152,6 +152,20 @@ add_executable(VYNX_QR WIN32
   app/Theme.h
   app/WindowsIntegration.cpp
   app/WindowsIntegration.h
+  app/widgets/AboutDialog.cpp
+  app/widgets/AboutDialog.h
+  app/widgets/Bridge.cpp
+  app/widgets/Bridge.h
+  app/widgets/ClipboardSuggestion.cpp
+  app/widgets/ClipboardSuggestion.h
+  app/widgets/CustomizePanel.cpp
+  app/widgets/CustomizePanel.h
+  app/widgets/QrPreview.cpp
+  app/widgets/QrPreview.h
+  app/widgets/SettingsDialog.cpp
+  app/widgets/SettingsDialog.h
+  app/widgets/SpecialQrForms.cpp
+  app/widgets/SpecialQrForms.h
 )
 
 target_include_directories(VYNX_QR PRIVATE
