@@ -182,13 +182,18 @@ void SpecialQrForms::buildWifiForm() {
   passwordLayout->setSpacing(Tokens::SpaceSmall);
   wifiPassword_ = new QLineEdit;
   wifiPassword_->setEchoMode(QLineEdit::Password);
+  // The accessible name belongs to the field the user types into, not to the row
+  // that holds it and the reveal button. A screen reader announcing the container
+  // would leave the control itself unnamed.
+  wifiPassword_->setAccessibleName(QStringLiteral("Password"));
   passwordLayout->addWidget(wifiPassword_, 1);
   wifiReveal_ = new QPushButton(QStringLiteral("Show"));
   wifiReveal_->setCheckable(true);
   wifiReveal_->setCursor(Qt::PointingHandCursor);
   wifiReveal_->setAccessibleName(QStringLiteral("Show or hide the password"));
   passwordLayout->addWidget(wifiReveal_);
-  layout->addWidget(field(QStringLiteral("Password"), passwordRow));
+  layout->addWidget(field(QStringLiteral("Password"), passwordRow,
+                         QStringLiteral("Kept exactly as typed, spaces included.")));
 
   connect(wifiReveal_, &QPushButton::toggled, this, [this](bool visible) {
     wifiPassword_->setEchoMode(visible ? QLineEdit::Normal : QLineEdit::Password);

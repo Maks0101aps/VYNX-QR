@@ -39,6 +39,18 @@ public:
   /// costs time and memory for an image the widget shows at a few hundred pixels.
   static constexpr std::uint32_t PreviewSize = 768;
 
+  /// The result currently on screen, or a default constructed one when empty.
+  ///
+  /// Exposed because the window's whole job is to decide what that value is;
+  /// the tests read it rather than scraping pixels.
+  [[nodiscard]] const vynx::GenerateResult &currentResult() const { return current_; }
+
+  /// Show a structured form. Called by the Special QR menu.
+  void setSpecialKind(vynx::PayloadType kind);
+
+  /// Clear the input and everything derived from it. Called by the Clear button.
+  void clearInput();
+
 protected:
   void closeEvent(QCloseEvent *event) override;
 

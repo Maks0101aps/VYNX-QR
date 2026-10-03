@@ -51,8 +51,15 @@ option(VYNX_DEPLOY_QT "Copy the Qt runtime next to the binary with windeployqt" 
 # ---------------------------------------------------------------------------
 # Qt
 # ---------------------------------------------------------------------------
-if(VYNX_BUILD_APP)
+# The window tests drive the real window, so they need Qt Widgets even in the
+# debug preset, where the application itself is deliberately not built.
+option(VYNX_BUILD_WINDOW_TESTS "Build the Qt window tests" ON)
+
+if(VYNX_BUILD_APP OR VYNX_BUILD_WINDOW_TESTS)
   find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+endif()
+if(VYNX_BUILD_WINDOW_TESTS)
+  find_package(Qt6 REQUIRED COMPONENTS Test)
 endif()
 
 if(VYNX_BUILD_APP AND Qt6_VERSION VERSION_LESS 6.5)
@@ -304,6 +311,75 @@ if(VYNX_BUILD_TESTS)
     target_compile_options(vynx_bridge_test PRIVATE /W4 /permissive- /utf-8)
   endif()
   add_test(NAME bridge COMMAND vynx_bridge_test)
+
+  # The window under test needs the application's own sources, so it is built from
+  # the same list rather than duplicating it.
+  add_executable(vynx_window_test
+    tests/MainWindow_test.cpp
+    app/MainWindow.cpp
+    app/widgets/AboutDialog.cpp
+    app/widgets/AboutDialog.h
+    app/MainWindow.h
+    app/Theme.cpp
+    app/Theme.h
+    app/WindowsIntegration.cpp
+    app/WindowsIntegration.h
+    app/widgets/Bridge.cpp
+    app/widgets/Bridge.h
+    app/widgets/ClipboardSuggestion.cpp
+    app/widgets/ClipboardSuggestion.h
+    app/widgets/CustomizePanel.cpp
+    app/widgets/CustomizePanel.h
+    app/widgets/QrPreview.cpp
+    app/widgets/QrPreview.h
+    app/widgets/SettingsDialog.cpp
+    app/widgets/SettingsDialog.h
+    app/widgets/SpecialQrForms.cpp
+    app/widgets/SpecialQrForms.h
+  )
+  target_include_directories(vynx_window_test PRIVATE
+    "${CMAKE_SOURCE_DIR}/app"
+    ${VYNX_BRIDGE_INCLUDE_ROOT}
+  )
+  target_link_libraries(vynx_window_test PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Test
+    "${VYNX_BRIDGE_LIB}"
+    ${VYNX_RUST_SYSTEM_LIBS}
+  )
+  target_compile_definitions(vynx_window_test PRIVATE
+    VYNX_VERSION="${PROJECT_VERSION}"
+    VYNX_REPOSITORY="${PROJECT_HOMEPAGE_URL}"
+    QT_NO_CAST_FROM_ASCII
+    QT_NO_CAST_TO_ASCII
+  )
+  if(MSVC)
+    target_compile_options(vynx_window_test PRIVATE /W4 /permissive- /utf-8 /wd4996)
+  endif()
+  add_test(NAME window COMMAND vynx_window_test)
+
+  # Qt on PATH, because the test binary links the Qt import libraries and does
+  # not carry the DLLs themselves.
+  #
+  # The test deliberately runs on the normal Windows platform rather than the
+  # offscreen one. Several windows are created and destroyed in sequence here, and
+  # the offscreen plugin crashes on that sequence with a stack buffer overrun while
+  # the real platform passes; a test that only runs on one platform is worth less
+  # than one that runs on the platform users actually have.
+  # Qt6_DIR is <prefix>/lib/cmake/Qt6, so the DLLs are three levels up. The path is
+  # checked here rather than discovered at test time, because a wrong one shows up
+  # as a bare 0xc0000135 with nothing to explain it.
+  get_filename_component(VYNX_QT_BIN "${Qt6_DIR}/../../../bin" ABSOLUTE)
+  if(NOT EXISTS "${VYNX_QT_BIN}")
+    message(FATAL_ERROR "Qt DLL directory not found at ${VYNX_QT_BIN}")
+  endif()
+  # ENVIRONMENT_MODIFICATION rather than a hand built PATH: the system PATH is
+  # full of semicolons, which CMake would read as list separators and mangle.
+  set_tests_properties(window PROPERTIES
+    ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${VYNX_QT_BIN}"
+  )
 endif()
 
 # ---------------------------------------------------------------------------
@@ -333,6 +409,9 @@ if(VYNX_BUILD_APP)
 endif()
 if(VYNX_BUILD_TESTS)
   target_link_libraries(vynx_bridge_test PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
+endif()
+if(VYNX_BUILD_WINDOW_TESTS)
+  target_link_libraries(vynx_window_test PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
 endif()
 
 # ---------------------------------------------------------------------------

@@ -111,6 +111,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   debounce_.setSingleShot(true);
   debounce_.setInterval(150);
+  // The whole point of the universal input is that the code appears as you type.
+  // Without this connection the timer is configured and never runs, and the code
+  // would only refresh on Enter.
+  connect(&debounce_, &QTimer::timeout, this, &MainWindow::onSmartInputChanged);
 
   wireShortcuts();
 
@@ -245,8 +249,14 @@ void MainWindow::buildComposer(QWidget *composer) {
   toast_->hide();
   composerLayout_->addWidget(toast_);
 
-  connect(inputField_, &QLineEdit::textChanged, this,
-          [this](const QString &text) { inputText_ = text; });
+  connect(inputField_, &QLineEdit::textChanged, this, [this](const QString &text) {
+    inputText_ = text;
+    // Every keystroke invalidates whatever is on screen, so a fast typist can
+    // never be left looking at a code for something they already deleted.
+    ++generation_;
+    // Debounced, so a render happens once the user pauses rather than per key.
+    debounce_.start();
+  });
   connect(inputField_, &QLineEdit::returnPressed, this, &MainWindow::onSmartInputSubmitted);
   connect(originalToggle_, &QPushButton::clicked, this, &MainWindow::onToggleOriginal);
   connect(copy_, &QPushButton::clicked, this, &MainWindow::onCopy);
@@ -374,6 +384,13 @@ void MainWindow::onToggleOriginal() {
   refresh();
 }
 
+void MainWindow::clearInput() { onClearInput(); }
+
+void MainWindow::setSpecialKind(vynx::PayloadType kind) {
+  setComposerMode(false);
+  forms_->showKind(kind);
+}
+
 void MainWindow::onClearInput() {
   inputField_->clear();
   inputText_.clear();
@@ -402,6 +419,9 @@ void MainWindow::updateChip() {
 
 void MainWindow::showOriginalToggle(bool visible, bool showingOriginal) {
   originalToggle_->setVisible(visible && !showingOriginal);
+  // The label is what tells the user what the button does, so it is set here
+  // rather than once at construction where a later state could leave it blank.
+  originalToggle_->setText(QStringLiteral("Use original text"));
   chipRow_->setVisible(true);
 }
 
@@ -427,13 +447,14 @@ vynx::RenderOptions MainWindow::currentOptions(std::uint32_t sizePx) const {
 }
 
 void MainWindow::refresh() {
-  if (!smartMode_ && !forms_->isComplete()) {
-    preview_->showEmpty();
-    copy_->setEnabled(false);
-    save_->setEnabled(false);
-    return;
-  }
-  if (smartMode_ && inputText_.trimmed().isEmpty()) {
+  const bool structuredAndIncomplete = !smartMode_ && !forms_->isComplete();
+  const bool smartAndEmpty = smartMode_ && inputText_.trimmed().isEmpty();
+
+  if (structuredAndIncomplete || smartAndEmpty) {
+    // Going back to the empty state must drop the previous result, not merely
+    // grey out the buttons: the old bytes would otherwise stay in memory and stay
+    // reachable through Copy and Save.
+    current_ = vynx::GenerateResult();
     preview_->showEmpty();
     copy_->setEnabled(false);
     save_->setEnabled(false);
@@ -459,6 +480,9 @@ void MainWindow::refresh() {
 
 void MainWindow::showError(const QString &message) {
   if (message.isEmpty()) {
+    // The empty state must not keep the previous result: Copy and Save are
+    // disabled, but the bytes would still be sitting in memory and reachable.
+    current_ = vynx::GenerateResult();
     preview_->showEmpty();
     copy_->setEnabled(false);
     save_->setEnabled(false);
