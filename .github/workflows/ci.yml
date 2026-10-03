@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned so a Qt point release cannot change what CI verifies.
+  QT_VERSION: "6.8.3"
+  QT_ARCH: "win64_msvc2022_64"
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.crate }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [core, bridge]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core -> target
+
+      - name: Formatting
+        working-directory: ${{ matrix.crate }}
+        run: cargo fmt --check
+
+      - name: Clippy
+        working-directory: ${{ matrix.crate }}
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        working-directory: ${{ matrix.crate }}
+        run: cargo test
+
+  native:
+    name: Native build (Qt ${{ env.QT_VERSION }})
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            core -> target
+            bridge -> target
+
+      - name: Install Qt
+        # aqtinstall is the mechanism used to produce the reference builds on the
+        # development machine too, and it fetches the official binaries without
+        # needing a Qt account. The version is pinned so a point release cannot
+        # change what CI verifies.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "aqtinstall==3.1.18"
+          aqt install-qt windows desktop "$env:QT_VERSION" "$env:QT_ARCH" -O "$env:RUNNER_TEMP\Qt"
+          "QT_DIR=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\$env:QT_ARCH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure (debug)
+        run: cmake --preset debug
+        env:
+          QTDIR: ${{ env.QT_DIR }}
+
+      - name: Build (debug)
+        run: cmake --build --preset debug
+
+      - name: Test the C++ to Rust bridge
+        run: ctest --preset debug --output-on-failure
+
+      - name: Configure (release)
+        run: cmake --preset release
+        env:
+          QTDIR: ${{ env.QT_DIR }}
+
+      - name: Build (release)
+        run: cmake --build --preset release
+
+      - name: Check the executable starts
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path "build/release/bin/VYNX QR.exe"
+          $process = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 8
+          if ($process.HasExited) {
+            Write-Error "VYNX QR exited immediately with $($process.ExitCode)"
+            exit 1
+          }
+          if (-not $process.MainWindowHandle) {
+            Write-Error "VYNX QR started but created no window"
+            Stop-Process -Id $process.Id -Force
+            exit 1
+          }
+          # The whole point of the migration: one process and no browser runtime.
+          $children = (Get-CimInstance Win32_Process |
+            Where-Object { $_.ParentProcessId -eq $process.Id }).Count
+          Write-Host "window created; child processes: $children"
+          if ($children -ne 0) {
+            Write-Error "expected a single process, found $children children"
+            Stop-Process -Id $process.Id -Force
+            exit 1
+          }
+          Stop-Process -Id $process.Id -Force
+
+      - name: Upload the application
+        uses: actions/upload-artifact@v4
+        with:
+          name: vynx-qr-native
+          path: |
+            build/release/bin/VYNX QR.exe
+            build/release/bin/Qt6*.dll
+            build/release/bin/platforms/
+            build/release/bin/styles/
+          if-no-files-found: error
