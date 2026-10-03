@@ -1,0 +1,159 @@
+// Proves the C++ side can drive the Rust engine end to end.
+//
+// If this links, runs and passes, then three things are true at once: the
+// generated header matches the bridge, the static library links into a C++
+// program, and the engine answers correctly when called from C++.
+//
+// cxx reports a fallible bridge function as a plain C++ function returning the
+// value and throwing `rust::Error` on failure, so failure is handled with
+// try/catch here rather than a checked return.
+
+#include <cstdlib>
+#include <iostream>
+#include <string>
+
+#include <rust/cxx.h>
+
+#include "vynx-qr-bridge/src/lib.rs.h"
+
+namespace {
+
+int failures = 0;
+
+void check(bool condition, const std::string &what) {
+  if (!condition) {
+    std::cerr << "  FAIL: " << what << '\n';
+    failures += 1;
+  } else {
+    std::cout << "  ok: " << what << '\n';
+  }
+}
+
+std::string text(const rust::String &value) {
+  return std::string(value.data(), value.size());
+}
+
+/// A detached Rust string, for the arguments the bridge takes by value.
+rust::String own(const std::string &value) { return rust::String(value); }
+
+vynx::Payload textPayload(const std::string &value) {
+  vynx::Payload payload;
+  payload.kind = vynx::PayloadType::Text;
+  payload.text = own(value);
+  payload.url = own("");
+  payload.phone = own("");
+  return payload;
+}
+
+void testDetection() {
+  std::cout << "detection\n";
+  const auto analysis = vynx::analyze(rust::Str("github.com"));
+  check(analysis.detected, "a bare domain is detected");
+  check(analysis.kind == vynx::ContentKind::Url, "github.com is a URL");
+  check(text(analysis.encoded) == "https://github.com", "the scheme is added");
+  check(!text(analysis.normalization).empty(), "the added scheme is announced");
+
+  const auto blank = vynx::analyze(rust::Str("   "));
+  check(!blank.detected, "blank input detects nothing");
+}
+
+void testRendering() {
+  std::cout << "rendering\n";
+  const auto result = vynx::generate(textPayload("VYNX QR"), vynx::default_style());
+  check(result.png.size() > 8, "PNG bytes come back");
+  check(result.png[0] == 0x89 && result.png[1] == 'P' && result.png[2] == 'N' &&
+            result.png[3] == 'G',
+        "the bytes really are a PNG");
+  check(result.width == result.height, "the code is square");
+  check(result.verification_status == vynx::VerifyStatus::Verified,
+        "the code decodes back to the payload");
+  check(text(result.encoded) == "VYNX QR", "the payload survived the round trip");
+}
+
+void testVectorExport() {
+  std::cout << "vector export\n";
+  const auto document = vynx::generate_svg(textPayload("VYNX QR"), vynx::default_style(), 512);
+  const std::string body = text(document);
+  check(body.find("<svg") != std::string::npos, "it is an SVG");
+  check(body.find("data:image") == std::string::npos,
+        "no raster is embedded without a logo");
+}
+
+void testUnicode() {
+  std::cout << "unicode\n";
+  for (const char *value : {"Привіт, Україно \U0001F1FA\U0001F1E6", "こんにちは", "🙂"}) {
+    const auto result = vynx::generate(textPayload(value), vynx::default_style());
+    check(text(result.encoded) == value, std::string("unchanged: ") + value);
+    check(result.verification_status == vynx::VerifyStatus::Verified,
+          std::string("scans back: ") + value);
+  }
+}
+
+void testWifiIsNotTrimmed() {
+  std::cout << "wifi credentials\n";
+  vynx::Payload payload = textPayload("");
+  payload.kind = vynx::PayloadType::Wifi;
+  payload.wifi.ssid = own(" VYNX Home ");
+  payload.wifi.password = own(" password with spaces ");
+  payload.wifi.security = vynx::WifiSecurity::Wpa;
+
+  const auto result = vynx::generate(payload, vynx::default_style());
+  check(text(result.encoded) == "WIFI:T:WPA;S: VYNX Home ;P: password with spaces ;;",
+        "surrounding spaces survive");
+  check(result.verification_status == vynx::VerifyStatus::Verified,
+        "the Wi-Fi code scans back");
+}
+
+void testRefusals() {
+  std::cout << "refusals\n";
+
+  bool refused = false;
+  try {
+    vynx::Payload payload = textPayload("");
+    payload.kind = vynx::PayloadType::Wifi;
+    const auto unused = vynx::generate(payload, vynx::default_style());
+    (void)unused;
+  } catch (const rust::Error &error) {
+    refused = true;
+    check(std::string(error.what()).find("network name") != std::string::npos,
+          "an empty SSID is refused with a useful message");
+  }
+  check(refused, "an empty SSID throws rather than encoding nothing");
+
+  bool refusedUnknown = false;
+  try {
+    vynx::Payload unknown = textPayload("hello");
+    unknown.kind = vynx::PayloadType{200};
+    const auto unused = vynx::generate(unknown, vynx::default_style());
+    (void)unused;
+  } catch (const rust::Error &error) {
+    refusedUnknown = true;
+    check(std::string(error.what()).find("Unsupported payload type") != std::string::npos,
+          "an unknown payload kind is named in the error");
+  }
+  check(refusedUnknown, "an unknown payload kind throws rather than becoming Geo");
+}
+
+} // namespace
+
+int main() {
+  std::cout << "VYNX QR bridge tests\n";
+  try {
+    testDetection();
+    testRendering();
+    testVectorExport();
+    testUnicode();
+    testWifiIsNotTrimmed();
+    testRefusals();
+  } catch (const rust::Error &error) {
+    std::cerr << "unexpected engine failure: " << error.what() << '\n';
+    return EXIT_FAILURE;
+  }
+
+  if (failures == 0) {
+    std::cout << "all checks passed\n";
+    return EXIT_SUCCESS;
+  }
+  std::cerr << failures << " check(s) failed\n";
+  return EXIT_FAILURE;
+}

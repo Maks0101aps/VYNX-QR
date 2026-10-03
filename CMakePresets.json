@@ -1,0 +1,78 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VYNX_BUILD_TESTS": "ON",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug (engine and bridge tests)",
+      "description": "Engine and bridge test only. Rust links the release C runtime in every profile, so a Qt debug build cannot be linked into the same process; that is why the window is not part of this preset.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VYNX_BUILD_APP": "OFF"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (application)",
+      "description": "Optimised engine and window, Qt runtime deployed next to the binary.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VYNX_BUILD_APP": "ON",
+        "VYNX_BUILD_TESTS": "OFF",
+        "VYNX_DEPLOY_QT": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Build the engine and bridge test",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Build the application",
+      "configurePreset": "release"
+    },
+    {
+      "name": "release-installer",
+      "displayName": "Build the application and package the installer",
+      "configurePreset": "release",
+      "targets": [
+        "installer",
+        "portable"
+      ]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "displayName": "Run the bridge tests",
+      "configurePreset": "debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    }
+  ]
+}

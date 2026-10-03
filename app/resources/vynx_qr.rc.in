@@ -1,0 +1,36 @@
+#include <windows.h>
+
+// Placeholders replaced by cmake/ConfigureResource.cmake, which also substitutes
+// the absolute icon path. Everything here is a normal Windows resource script:
+// no Tauri involved, and no workaround for a missing resource compiler.
+
+IDI_ICON ICON "@VYNX_RC_ICON@"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @VYNX_RC_VERSION_MAJOR@,@VYNX_RC_VERSION_MINOR@,@VYNX_RC_VERSION_PATCH@,0
+PRODUCTVERSION @VYNX_RC_VERSION_MAJOR@,@VYNX_RC_VERSION_MINOR@,@VYNX_RC_VERSION_PATCH@,0
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE 0x0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "VYNX\0"
+            VALUE "FileDescription", "VYNX QR - fast, private QR codes for Windows.\0"
+            VALUE "FileVersion", "@VYNX_RC_VERSION@\0"
+            VALUE "InternalName", "VYNX_QR\0"
+            VALUE "LegalCopyright", "Copyright (c) 2026 Maks0101aps\0"
+            VALUE "OriginalFilename", "VYNX QR.exe\0"
+            VALUE "ProductName", "VYNX QR\0"
+            VALUE "ProductVersion", "@VYNX_RC_VERSION@\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
