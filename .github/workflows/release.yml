@@ -101,6 +101,18 @@ jobs:
           if ($children -ne 0) { throw "expected one process, found $children children" }
           Stop-Process -Id $process.Id -Force
 
+      # Keeping the logs makes a failure diagnosable without re-running, and
+      # re-running costs a Qt download.
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ github.job }}
+          path: |
+            build/
+            **/*.log
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
