@@ -50,16 +50,28 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "aqtinstall==3.1.18"
           aqt install-qt windows desktop "$env:QT_VERSION" "$env:QT_ARCH" -O "$env:RUNNER_TEMP\Qt"
-          "QT_DIR=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\$env:QT_ARCH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          # QTDIR is the variable the CMake presets read. Writing it through
+          # GITHUB_ENV makes it a real environment variable for the following
+          # steps. The workflow level "env: QTDIR: ${{ env.QT_DIR }}" does not:
+          # the env context only covers what the workflow itself declared, not
+          # what an earlier step exported.
+          "QTDIR=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\$env:QT_ARCH" |
+            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install NSIS
+        # Not assumed to be present. The hosted Windows images list Inno Setup and
+        # WiX, and makensis is not guaranteed, so a release must not depend on it
+        # being there by luck.
+        run: choco install nsis --yes --no-progress
+
+      - name: Verify makensis
+        run: makensis /VERSION
 
       - name: Configure and test natively
         run: |
-          cmake --preset debug
-          cmake --build --preset debug
-          ctest --preset debug --output-on-failure
-
-      - name: Build
-        run: cmake --build --preset release
+          cmake --preset release
+          cmake --build --preset release
+          ctest --preset release --output-on-failure
 
       - name: Package
         run: cmake --build --preset release --target installer portable

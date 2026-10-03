@@ -93,7 +93,7 @@ Checks:
 ```powershell
 cd core;  cargo fmt --check; cargo clippy --all-targets -- -D warnings; cargo test
 cd ..\bridge; cargo fmt --check; cargo clippy --all-targets -- -D warnings; cargo test
-cd ..; cmake --preset debug; cmake --build --preset debug; ctest --preset debug
+cd ..; cmake --preset release; cmake --build --preset release; ctest --preset release
 ```
 
 Details, including why there is no debug build of the application itself, are in
@@ -149,6 +149,7 @@ live.
 | Engine | 139 Rust tests, including round trips from payload to decoded symbol |
 | Bridge | 15 Rust tests for the boundary |
 | Native | 40 checks from C++ through the bridge to a scanned result |
+| Window | 10 tests against the real window: live typing, the empty state, stale results, the original-text toggle, structured forms |
 | UI | logic states are covered through the native tests rather than by pixels |
 
 ## Licence

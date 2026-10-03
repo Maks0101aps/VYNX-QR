@@ -27,23 +27,30 @@ Only `Core`, `Gui` and `Widgets` are used. No WebEngine, no QML, no Network.
 ## Presets
 
 ```powershell
-cmake --preset debug      # engine and the C++ bridge test
-cmake --build --preset debug
-ctest --preset debug
-
-cmake --preset release            # the application
+cmake --preset release                  # the application
 cmake --build --preset release
+ctest --preset release                  # engine, bridge and window tests
 
-cmake --build --preset release-installer   # installer and portable archive
+cmake --preset debug                    # engine and C++ bridge test only
+cmake --build --preset debug
+
+cmake --build --preset release --target installer portable
 ```
 
-### Why there is no application in the debug preset
+### Why the tests run in release
+
+Two separate reasons, and both bite the same way.
 
 Rust on the MSVC target links the release C runtime in every profile, and there
 is no supported way to ask for the debug one. A Qt debug build links the debug
-runtime, so the two cannot coexist in one process. The application is therefore
-built Release, and the debug preset covers the engine and the bridge test, which
-pull in no Qt at all.
+runtime, so the two cannot coexist in one process.
+
+Worse, the Qt debug import libraries are not all debug: CMake still resolves
+`Qt6Guid` to its release library, so a debug build ends up loading `Qt6Cored.dll`
+and `Qt6Widgetsd.dll` beside `Qt6Guid.dll`. Two Qt copies in one process corrupt the
+heap, and the only symptom is a bare `0xC0000374` with no diagnostic at all. That is
+what it took to find, and it is why the window tests are built with the release
+preset.
 
 ## Artifacts
 
