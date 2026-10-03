@@ -50,7 +50,7 @@ jobs:
         run: cargo test
 
   native:
-    name: Native build (Qt ${{ env.QT_VERSION }})
+    name: Native build and window tests
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
