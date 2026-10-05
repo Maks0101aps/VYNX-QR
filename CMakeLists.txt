@@ -56,7 +56,9 @@ option(VYNX_DEPLOY_QT "Copy the Qt runtime next to the binary with windeployqt" 
 option(VYNX_BUILD_WINDOW_TESTS "Build the Qt window tests" ON)
 
 if(VYNX_BUILD_APP OR VYNX_BUILD_WINDOW_TESTS)
+  message(STATUS "Qt prefix from the environment: $ENV{QTDIR}")
   find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+  message(STATUS "Qt ${Qt6_VERSION} found at ${Qt6_DIR}")
 endif()
 if(VYNX_BUILD_WINDOW_TESTS)
   find_package(Qt6 REQUIRED COMPONENTS Test)
@@ -77,6 +79,7 @@ find_program(CARGO_EXECUTABLE cargo
   HINTS "$ENV{USERPROFILE}/.cargo/bin" "$ENV{HOME}/.cargo/bin"
   REQUIRED
 )
+message(STATUS "Cargo: ${CARGO_EXECUTABLE}")
 
 # Cargo writes its static library into the profile directory. Keep it inside the
 # CMake binary directory so a clean removes both, and so this file knows where to
