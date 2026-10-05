@@ -56,6 +56,22 @@ option(VYNX_DEPLOY_QT "Copy the Qt runtime next to the binary with windeployqt" 
 option(VYNX_BUILD_WINDOW_TESTS "Build the Qt window tests" ON)
 
 if(VYNX_BUILD_APP OR VYNX_BUILD_WINDOW_TESTS)
+  # Fail here, naming the reason, rather than letting find_package(Qt6) report
+  # that Qt is missing. It cannot link against MinGW objects, and it cannot link
+  # against an MSVC Rust static library, and the message it produces in that
+  # situation mentions neither.
+  if(NOT MSVC)
+    message(FATAL_ERROR
+      "VYNX QR needs MSVC, but CMake selected ${CMAKE_CXX_COMPILER_ID} "
+      "(${CMAKE_CXX_COMPILER}).\n"
+      "Qt comes from the msvc2022_64 packages and the Rust engine is built for "
+      "x86_64-pc-windows-msvc; neither can link with MinGW.\n"
+      "If g++ is ahead of MSVC on PATH, configure from a Visual Studio developer "
+      "prompt, or delete the CMake cache so cmake/windows-msvc.cmake takes effect."
+    )
+  endif()
+
+  message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
   message(STATUS "Qt prefix from the environment: $ENV{QTDIR}")
   find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
   message(STATUS "Qt ${Qt6_VERSION} found at ${Qt6_DIR}")
