@@ -282,9 +282,17 @@ function encodeIco(entries) {
 
 mkdirSync(ICONS_DIR, { recursive: true });
 
-// VYNX QR ships Windows installers only, so the generator writes exactly the files
-// the build consumes and nothing more. An unreferenced size is dead weight in the
-// repository, and an unreferenced ICO entry is dead weight in every executable.
+const linuxDir = resolve(ICONS_DIR, 'linux');
+mkdirSync(linuxDir, { recursive: true });
+for (const size of [48, 64, 128, 256, 512]) {
+  writeFileSync(resolve(linuxDir, `${size}x${size}.png`), encodePng(size, size, drawMark(size)));
+}
+if (process.argv.includes('--linux-only')) {
+  console.log(`Linux icons written to ${linuxDir}`);
+  process.exit(0);
+}
+
+// The same mark supplies the Windows resources and Linux hicolor icons.
 const master = drawMark(1024);
 
 // The master, kept so the set can be regenerated at any resolution.

@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
   QApplication::setOrganizationName(QStringLiteral("VYNX"));
   QApplication::setApplicationVersion(PlatformIntegration::versionString());
   QApplication::setApplicationDisplayName(QStringLiteral("VYNX QR"));
+  QGuiApplication::setDesktopFileName(QStringLiteral("vynx-qr"));
 
   QFont font(systemFontFamily());
   font.setPixelSize(13);

@@ -364,4 +364,6 @@ endif()
 
 if(WIN32 AND VYNX_BUILD_APP)
   include(cmake/windows-packaging.cmake)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND VYNX_BUILD_APP)
+  include(cmake/linux.cmake)
 endif()

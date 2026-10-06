@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise a real X11 window; retain metrics and diagnostics on failure."""
 import argparse
+from contextlib import nullcontext
 import json
 import os
 from pathlib import Path
@@ -37,6 +38,7 @@ def main():
     parser.add_argument('executable')
     parser.add_argument('--report', required=True)
     parser.add_argument('--runs', type=int, default=5)
+    parser.add_argument('--config-home', type=Path)
     args = parser.parse_args()
     report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -54,7 +56,9 @@ def main():
         while subprocess.run(['wmctrl', '-m'], capture_output=True).returncode:
             assert time.monotonic() < deadline, 'window manager did not become ready'
             time.sleep(.1)
-        with tempfile.TemporaryDirectory(prefix='vynx smoke ') as config:
+        config_context = (nullcontext(str(args.config_home.resolve())) if args.config_home
+                          else tempfile.TemporaryDirectory(prefix='vynx smoke '))
+        with config_context as config:
             env = os.environ | {'XDG_CONFIG_HOME': config, 'QT_QPA_PLATFORM': 'xcb'}
             for index in range(args.runs):
                 log_path = report_path.with_suffix(f'.{index}.stderr.log')

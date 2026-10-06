@@ -187,6 +187,21 @@ jobs:
           cmake --preset linux-debug
           cmake --build --preset linux-debug
           xvfb-run -a ctest --preset linux-debug
+      - name: Build Debian package with system Qt
+        run: |
+          sudo apt-get install -y dpkg-dev desktop-file-utils
+          desktop-file-validate packaging/linux/vynx-qr.desktop
+          cmake --build --preset linux-release --target deb
+          python3 scripts/verify-rust-notices.py build/linux-release/linux-docs/licenses/rust --target x86_64-unknown-linux-gnu --lockfile bridge/Cargo.lock
+          cd build/linux-release/package
+          sha256sum *.deb > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-deb
+          path: |
+            build/linux-release/package/*.deb
+            build/linux-release/package/SHA256SUMS.txt
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -196,4 +211,28 @@ jobs:
             build/linux-release/Testing/Temporary/
             build/linux-debug/Testing/Temporary/
             build/linux-release/bin/vynx-qr
+          if-no-files-found: warn
+
+  deb-smoke:
+    name: DEB from Actions install/run/remove
+    needs: ubuntu
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ubuntu-deb
+          path: artifacts
+      - name: Install test infrastructure
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth openbox wmctrl desktop-file-utils
+      - name: Install, run and remove the actual artifact
+        run: |
+          python3 scripts/linux-package-smoke.py artifacts/*.deb --manifest artifacts/SHA256SUMS.txt --report build/deb-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deb-smoke-evidence
+          path: build/deb-smoke/
           if-no-files-found: warn
