@@ -19,7 +19,8 @@ Unicode true
   !define VYNX_PAYLOAD_DIR "..\\bin"
 !endif
 !ifndef VYNX_ICON
-  !define VYNX_ICON "..\\..\\app\\resources\\icons\\icon.ico"
+  ; CMake resolves app/resources/icons/icon.ico for the generated script.
+  !define VYNX_ICON "@VYNX_RC_ICON@"
 !endif
 !ifndef VYNX_LICENSE
   !define VYNX_LICENSE "..\\..\\LICENSE"
