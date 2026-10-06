@@ -35,14 +35,11 @@ CustomizePanel::CustomizePanel(QWidget *parent) : QWidget(parent) {
                                     foregroundSwatch_));
   layout->addWidget(buildColourRow(QStringLiteral("Background"), background_,
                                     backgroundSwatch_));
-  layout->addWidget(sectionLabel(QStringLiteral("ERROR CORRECTION")));
-  layout->addWidget(buildStyleRow());
-  layout->addWidget(sectionLabel(QStringLiteral("EXPORT")));
+  layout->addWidget(sectionLabel(QStringLiteral("LOGO")));
   layout->addWidget(buildLogoRow());
   layout->addStretch(1);
 
-  updateSwatch(foreground_->text());
-  updateSwatch(background_->text());
+  reset();
 }
 
 QWidget *CustomizePanel::buildStyleRow() {
@@ -113,12 +110,12 @@ QWidget *CustomizePanel::buildColourRow(const QString &label, QLineEdit *&box,
     box->style()->unpolish(box);
     box->style()->polish(box);
     if (valid) {
-      updateSwatch(box->text());
+      updateSwatch(swatch, box->text());
       emit edited();
     }
   });
 
-  connect(swatch, &QPushButton::clicked, this, [this, box, label] {
+  connect(swatch, &QPushButton::clicked, this, [this, box, swatch, label] {
     const QColor chosen =
         QColorDialog::getColor(vynxq::parseHexColour(box->text()), this,
                                QStringLiteral("Choose %1").arg(label));
@@ -129,7 +126,7 @@ QWidget *CustomizePanel::buildColourRow(const QString &label, QLineEdit *&box,
     box->setProperty("invalid", QStringLiteral("false"));
     box->style()->unpolish(box);
     box->style()->polish(box);
-    updateSwatch(box->text());
+    updateSwatch(swatch, box->text());
     emit edited();
   });
 
@@ -180,17 +177,16 @@ QWidget *CustomizePanel::buildLogoRow() {
   return row;
 }
 
-void CustomizePanel::updateSwatch(const QString &hex) {
+void CustomizePanel::updateSwatch(QPushButton *swatch, const QString &hex) {
+  swatch->setProperty("colour", hex);
   const QColor colour = vynxq::parseHexColour(hex);
   const QString stylesheet = colour.isValid()
                                  ? QStringLiteral("background: %1;").arg(vynxq::toHex(colour))
                                  : QStringLiteral("background: transparent;");
   const QColor border = colour.isValid() ? vynxq::parseHexColour(hex) : QColor(Qt::gray);
-  for (QPushButton *swatch : {foregroundSwatch_, backgroundSwatch_}) {
     swatch->setStyleSheet(
         QStringLiteral("%1 border: 1px solid %2; border-radius: 4px;")
             .arg(stylesheet, border.name(QColor::HexRgb)));
-  }
 }
 
 void CustomizePanel::setLogo(const vynx::Logo &logo) {
@@ -218,13 +214,8 @@ void CustomizePanel::writeInto(vynx::RenderOptions &options) const {
 
   // An invalid colour is simply not sent: the last good one stays in effect, so
   // a half typed hex never produces an unreadable code.
-  if (vynxq::isHexColour(foreground_->text())) {
-    options.foreground = vynxq::toRust(vynxq::toHex(vynxq::parseHexColour(foreground_->text())));
-  }
-  if (vynxq::isHexColour(background_->text())) {
-    options.background =
-        vynxq::toRust(vynxq::toHex(vynxq::parseHexColour(background_->text())));
-  }
+  options.foreground = vynxq::toRust(foregroundSwatch_->property("colour").toString());
+  options.background = vynxq::toRust(backgroundSwatch_->property("colour").toString());
 }
 
 vynx::RenderOptions CustomizePanel::options(std::uint32_t sizePx) const {
@@ -263,6 +254,17 @@ void CustomizePanel::applySettings(const vynx::Settings &settings) {
 }
 
 void CustomizePanel::reset() {
+  const auto defaults = vynx::default_style();
+  foreground_->setText(vynxq::toQString(defaults.foreground));
+  background_->setText(vynxq::toQString(defaults.background));
+  for (auto *field : {foreground_, background_}) {
+    field->setProperty("invalid", QStringLiteral("false"));
+    field->style()->unpolish(field);
+    field->style()->polish(field);
+  }
+  updateSwatch(foregroundSwatch_, foreground_->text());
+  updateSwatch(backgroundSwatch_, background_->text());
+  logoHint_->setText(QStringLiteral("PNG, JPEG or WebP, up to 2 MB."));
   moduleStyle_->setCurrentIndex(0);
   errorCorrection_->setCurrentIndex(1);
   quietZone_->setCurrentIndex(3);

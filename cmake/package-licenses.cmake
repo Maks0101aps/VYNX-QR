@@ -1,0 +1,16 @@
+if(NOT QT_VERSION STREQUAL "6.8.3")
+  message(FATAL_ERROR "Update the pinned Qt source archive and licence information for Qt ${QT_VERSION}")
+endif()
+file(MAKE_DIRECTORY "${PAYLOAD}/licenses/qt")
+file(COPY "${SOURCE}/licenses/" DESTINATION "${PAYLOAD}/licenses")
+file(COPY "${SOURCE}/LICENSE" "${SOURCE}/THIRD_PARTY_LICENSES.md" DESTINATION "${PAYLOAD}")
+set(archive "${PAYLOAD}/licenses/qt/qtbase-everywhere-src-6.8.3.tar.xz")
+set(expected "56001b905601bb9023d399f3ba780d7fa940f3e4861e496a7c490331f49e0b80")
+if(EXISTS "${archive}")
+  file(SHA256 "${archive}" actual)
+endif()
+if(NOT actual STREQUAL expected)
+  file(DOWNLOAD
+    "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz"
+    "${archive}" EXPECTED_HASH "SHA256=${expected}" TLS_VERIFY ON SHOW_PROGRESS)
+endif()

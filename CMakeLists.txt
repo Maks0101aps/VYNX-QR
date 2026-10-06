@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(VYNX_QR
-  VERSION 1.0.0
+  VERSION 1.0.1
   DESCRIPTION "Fast, private QR codes for Windows."
   HOMEPAGE_URL "https://github.com/Maks0101aps/VYNX-QR"
   LANGUAGES CXX
@@ -449,6 +449,11 @@ if(VYNX_BUILD_APP)
 set(VYNX_PAYLOAD_DIR "${CMAKE_BINARY_DIR}/bin")
 set(VYNX_PACKAGE_DIR "${CMAKE_BINARY_DIR}/package")
 file(MAKE_DIRECTORY "${VYNX_PACKAGE_DIR}")
+add_custom_target(license_payload
+  COMMAND "${CMAKE_COMMAND}" "-DSOURCE=${CMAKE_SOURCE_DIR}"
+          "-DPAYLOAD=${VYNX_PAYLOAD_DIR}" "-DQT_VERSION=${Qt6_VERSION}"
+          -P "${CMAKE_SOURCE_DIR}/cmake/package-licenses.cmake"
+  VERBATIM)
 
 # Point NSIS at the same payload directory the build produced.
 configure_file("${CMAKE_SOURCE_DIR}/installer/vynx_qr.nsi" "${VYNX_PACKAGE_DIR}/vynx_qr.nsi" @ONLY)
@@ -468,7 +473,7 @@ else()
             "/XSetCompressor /SOLID lzma"
             "/XOutFile ${VYNX_PACKAGE_DIR}/VYNX-QR-Setup-x64-${PROJECT_VERSION}.exe"
             "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
-    DEPENDS VYNX_QR "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
+    DEPENDS VYNX_QR license_payload "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
     COMMENT "Building the NSIS installer"
     VERBATIM
   )
@@ -483,9 +488,9 @@ endif()
     COMMAND "${CMAKE_COMMAND}" -E tar czf
             "${VYNX_PACKAGE_DIR}/VYNX-QR-Portable-x64-${PROJECT_VERSION}.zip"
             --format=zip "VYNX QR.exe" "Qt6Core.dll" "Qt6Gui.dll" "Qt6Widgets.dll"
-            "platforms" "styles"
+            "platforms" "styles" "licenses" "LICENSE" "THIRD_PARTY_LICENSES.md"
     WORKING_DIRECTORY "${VYNX_PAYLOAD_DIR}"
-    DEPENDS VYNX_QR
+    DEPENDS VYNX_QR license_payload
     COMMENT "Building the portable archive"
     VERBATIM
   )

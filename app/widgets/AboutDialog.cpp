@@ -31,6 +31,11 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent) {
   auto *privacy = new QLabel(QStringLiteral("100% local. No telemetry, no account,\nno history."));
   privacy->setProperty("role", QStringLiteral("caption"));
   layout->addWidget(privacy);
+  auto *qtNotice = new QLabel(QStringLiteral(
+      "Uses Qt under LGPL-3.0. Licence texts, Qt source and\n"
+      "library replacement instructions are included in licenses/qt."));
+  qtNotice->setWordWrap(true);
+  layout->addWidget(qtNotice);
 
   layout->addSpacing(Tokens::SpaceSmall);
   addLink(QStringLiteral("GitHub"), WindowsIntegration::repositoryUrl());

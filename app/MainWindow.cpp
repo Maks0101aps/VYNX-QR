@@ -4,6 +4,7 @@
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QFile>
+#include <QSaveFile>
 #include <QFileDialog>
 #include <QRegularExpression>
 #include <QFileInfo>
@@ -121,7 +122,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // Read once, after the window exists, so the first paint is not delayed.
   QTimer::singleShot(0, this, &MainWindow::readClipboardOnce);
 
-  WindowsIntegration::applyWindowChrome(reinterpret_cast<void *>(winId()));
+  applyTheme();
 }
 
 MainWindow::~MainWindow() = default;
@@ -351,14 +352,14 @@ void MainWindow::onSmartInputChanged() {
     return;
   }
 
-  const std::string text = trimmed.toStdString();
+  const std::string text = inputText_.toStdString();
   try {
     // Classification and the payload travel together on purpose. The payload is
     // the engine's, not something rebuilt from the encoded string, which already
     // carries a scheme and would be encoded a second time.
     const vynx::SmartPayload smart = vynx::smart_payload(rust::Str(text));
     detected_ = smart.detected;
-    changesInput_ = smart.analysis.changes_input;
+    changesInput_ = smart.analysis.changes_input || inputText_ != trimmed;
     detectedPayload_ = smart.payload;
     detectedKind_ = contentKindLabel(smart.analysis.kind);
     normalizationNotice_ = vynxq::toQString(smart.analysis.normalization);
@@ -418,10 +419,11 @@ void MainWindow::updateChip() {
 }
 
 void MainWindow::showOriginalToggle(bool visible, bool showingOriginal) {
-  originalToggle_->setVisible(visible && !showingOriginal);
+  originalToggle_->setVisible(visible);
   // The label is what tells the user what the button does, so it is set here
   // rather than once at construction where a later state could leave it blank.
-  originalToggle_->setText(QStringLiteral("Use original text"));
+  originalToggle_->setText(showingOriginal ? QStringLiteral("Use detected URL")
+                                          : QStringLiteral("Use original text"));
   chipRow_->setVisible(true);
 }
 
@@ -431,8 +433,8 @@ vynx::Payload MainWindow::currentPayload() const {
   }
   // The escape hatch is a text payload built by the engine, so it goes through
   // the same typed path rather than being assembled here.
-  if (useOriginalText_) {
-    return vynx::original_text_payload(rust::Str(inputText_.trimmed().toStdString()));
+  if (useOriginalText_ || detectedPayload_.kind == vynx::PayloadType::Text) {
+    return vynx::original_text_payload(rust::Str(inputText_.toStdString()));
   }
   // Otherwise the payload is the one the engine produced. Rebuilding it from
   // `Analysis::encoded` is what produced "mailto:mailto:hello@example.com".
@@ -509,7 +511,7 @@ void MainWindow::copyToClipboard() {
     // Straight RGBA out of the renderer, so the clipboard holds exactly the
     // pixels that were verified.
     const vynx::Bitmap bitmap =
-        vynx::generate_bitmap(currentPayload(), currentOptions(settings_.default_size));
+        vynx::generate_bitmap(currentPayload(), currentOptions(customize_->exportSize()));
     const QImage image(reinterpret_cast<const uchar *>(bitmap.pixels.data()),
                        static_cast<int>(bitmap.width), static_cast<int>(bitmap.height),
                        static_cast<qsizetype>(bitmap.width * 4), QImage::Format_RGBA8888);
@@ -561,30 +563,41 @@ void MainWindow::saveToDisk(vynx::ExportFormat format) {
     return;
   }
 
+  exportToFile(chosen, format);
+}
+
+bool MainWindow::exportToFile(const QString &chosen, vynx::ExportFormat format) {
+  const auto payload = currentPayload();
+  const bool svg = format == vynx::ExportFormat::Svg;
+  const auto size = customize_->exportSize();
+
   try {
     QByteArray bytes;
     if (svg || chosen.endsWith(QStringLiteral(".svg"), Qt::CaseInsensitive)) {
       // Written as text by the engine, so the file stays a real vector.
-      bytes = vynxq::toQString(vynx::generate_svg(payload, currentOptions(settings_.default_size),
-                                                  settings_.default_size))
+      bytes = vynxq::toQString(vynx::generate_svg(payload, currentOptions(size), size))
                   .toUtf8();
     } else {
       const vynx::GenerateResult result =
-          vynx::generate(payload, currentOptions(settings_.default_size));
+          vynx::generate(payload, currentOptions(size));
       bytes = QByteArray(reinterpret_cast<const char *>(result.png.data()),
                          static_cast<qsizetype>(result.png.size()));
     }
 
-    QFile file(chosen);
+    QSaveFile file(chosen);
     if (!file.open(QIODevice::WriteOnly)) {
       showError(QStringLiteral("That location cannot be written to."));
-      return;
+      return false;
     }
-    file.write(bytes);
-    file.close();
+    if (file.write(bytes) != bytes.size() || !file.commit()) {
+      showError(QStringLiteral("The file could not be saved: %1").arg(file.errorString()));
+      return false;
+    }
     showToast(QStringLiteral("Saved to %1").arg(QFileInfo(chosen).fileName()));
+    return true;
   } catch (const rust::Error &error) {
     showError(vynxq::errorMessage(error));
+    return false;
   }
 }
 
@@ -601,11 +614,34 @@ void MainWindow::onOpenSettings() {
 void MainWindow::applySettings(const vynx::Settings &settings) {
   settings_ = settings;
   customize_->applySettings(settings);
+  applyTheme();
   try {
     vynx::save_settings(settings);
   } catch (const rust::Error &error) {
     showToast(vynxq::errorMessage(error));
   }
+}
+
+void MainWindow::applyTheme() {
+  const auto info = vynx::system_info();
+  const QColor accent = settings_.use_windows_accent
+      ? QColor::fromString(vynxq::toQString(info.accent_color)) : QColor();
+  const auto palette = makePalette(
+      settings_.theme == vynx::ThemeMode::Dark ? QStringLiteral("dark")
+      : settings_.theme == vynx::ThemeMode::Light ? QStringLiteral("light")
+                                                : QStringLiteral("system"), accent);
+  QPalette widgetPalette;
+  widgetPalette.setColor(QPalette::Window, palette.window);
+  widgetPalette.setColor(QPalette::WindowText, palette.textPrimary);
+  widgetPalette.setColor(QPalette::Base, palette.surfaceSunken);
+  widgetPalette.setColor(QPalette::Text, palette.textPrimary);
+  widgetPalette.setColor(QPalette::Button, palette.surface);
+  widgetPalette.setColor(QPalette::ButtonText, palette.textPrimary);
+  widgetPalette.setColor(QPalette::Highlight, palette.accent);
+  widgetPalette.setColor(QPalette::HighlightedText, palette.accentText);
+  qApp->setPalette(widgetPalette);
+  qApp->setStyleSheet(styleSheetFor(palette));
+  WindowsIntegration::applyWindowChrome(reinterpret_cast<void *>(winId()), palette.isDark());
 }
 
 void MainWindow::onOpenAbout() {
@@ -625,7 +661,7 @@ void MainWindow::readClipboardOnce() {
     return;
   }
   if (settings_.auto_paste) {
-    inputText_ = text.trimmed();
+    inputText_ = text;
     inputField_->setText(inputText_);
     onSmartInputChanged();
     showToast(QStringLiteral("Encoded the clipboard contents"));

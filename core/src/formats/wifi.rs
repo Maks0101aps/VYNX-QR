@@ -23,10 +23,10 @@ pub fn encode(
     if ssid.trim().is_empty() {
         return Err(err_with(ErrorCode::InvalidWifi, "ssid is blank"));
     }
-    if ssid.chars().count() > 32 {
+    if ssid.len() > 32 {
         return Err(err_with(
             ErrorCode::InvalidWifi,
-            "ssid longer than 32 characters",
+            "ssid longer than 32 UTF-8 bytes",
         ));
     }
     if ssid.contains('\n') || ssid.contains('\r') {
@@ -42,13 +42,17 @@ pub fn encode(
             "password required for this security type",
         ));
     }
-    if password.chars().count() > 63 {
+    let printable = password.bytes().all(|byte| (0x20..=0x7e).contains(&byte));
+    let hex = password.bytes().all(|byte| byte.is_ascii_hexdigit());
+    if security == WifiSecurity::Wpa
+        && !((printable && (8..=63).contains(&password.len())) || (hex && password.len() == 64))
+    {
         return Err(err_with(
             ErrorCode::InvalidWifi,
-            "password longer than 63 characters",
+            "WPA needs 8–63 printable ASCII characters or 64 hexadecimal digits",
         ));
     }
-    if password.contains('\n') || password.contains('\r') {
+    if security != WifiSecurity::None && (password.contains('\n') || password.contains('\r')) {
         return Err(err_with(
             ErrorCode::InvalidWifi,
             "password contains a line break",
@@ -82,14 +86,14 @@ mod tests {
     #[test]
     fn escapes_delimiters_in_ssid_and_password() {
         let payload =
-            encode("My;Password:123", "p,a\\ss", WifiSecurity::Wpa, false).expect("encode");
-        assert_eq!(payload, r"WIFI:T:WPA;S:My\;Password\:123;P:p\,a\\ss;;");
+            encode("My;Password:123", "p,a\\ss123", WifiSecurity::Wpa, false).expect("encode");
+        assert_eq!(payload, r"WIFI:T:WPA;S:My\;Password\:123;P:p\,a\\ss123;;");
     }
 
     #[test]
     fn marks_hidden_networks() {
-        let payload = encode("Hidden", "pw", WifiSecurity::Wpa, true).expect("encode");
-        assert_eq!(payload, "WIFI:T:WPA;S:Hidden;P:pw;H:true;;");
+        let payload = encode("Hidden", "password", WifiSecurity::Wpa, true).expect("encode");
+        assert_eq!(payload, "WIFI:T:WPA;S:Hidden;P:password;H:true;;");
     }
 
     #[test]
@@ -107,7 +111,7 @@ mod tests {
     #[test]
     fn rejects_invalid_input() {
         assert_eq!(
-            encode("  ", "pw", WifiSecurity::Wpa, false)
+            encode("  ", "password", WifiSecurity::Wpa, false)
                 .unwrap_err()
                 .code(),
             ErrorCode::InvalidWifi
@@ -118,9 +122,9 @@ mod tests {
                 .code(),
             ErrorCode::InvalidWifi
         );
-        assert!(encode("SSID", "pw", WifiSecurity::Wep, false).is_ok());
+        assert!(encode("SSID", "password", WifiSecurity::Wep, false).is_ok());
         assert_eq!(
-            encode(&"a".repeat(33), "pw", WifiSecurity::Wpa, false)
+            encode(&"a".repeat(33), "password", WifiSecurity::Wpa, false)
                 .unwrap_err()
                 .code(),
             ErrorCode::InvalidWifi
@@ -129,16 +133,16 @@ mod tests {
 
     #[test]
     fn keeps_unicode_network_names() {
-        let payload = encode("Мій Дім", "пароль", WifiSecurity::Wpa, false).expect("encode");
-        assert_eq!(payload, "WIFI:T:WPA;S:Мій Дім;P:пароль;;");
+        let payload = encode("Мій Дім", "password", WifiSecurity::Wpa, false).expect("encode");
+        assert_eq!(payload, "WIFI:T:WPA;S:Мій Дім;P:password;;");
     }
 
     /// A leading or trailing space is part of the network name. Trimming it would
     /// hand the user a code for a different access point.
     #[test]
     fn preserves_surrounding_whitespace_in_the_ssid() {
-        let payload = encode(" VYNX Home ", "pw", WifiSecurity::Wpa, false).expect("encode");
-        assert_eq!(payload, "WIFI:T:WPA;S: VYNX Home ;P:pw;;");
+        let payload = encode(" VYNX Home ", "password", WifiSecurity::Wpa, false).expect("encode");
+        assert_eq!(payload, "WIFI:T:WPA;S: VYNX Home ;P:password;;");
     }
 
     #[test]
@@ -150,21 +154,21 @@ mod tests {
 
     #[test]
     fn distinguishes_two_names_that_differ_only_in_padding() {
-        let padded = encode("Home", "pw", WifiSecurity::Wpa, false).expect("encode");
-        let spaced = encode(" Home ", "pw", WifiSecurity::Wpa, false).expect("encode");
+        let padded = encode("Home", "password", WifiSecurity::Wpa, false).expect("encode");
+        let spaced = encode(" Home ", "password", WifiSecurity::Wpa, false).expect("encode");
         assert_ne!(padded, spaced);
     }
 
     #[test]
     fn still_rejects_a_blank_ssid_or_password() {
         assert_eq!(
-            encode("   ", "pw", WifiSecurity::Wpa, false)
+            encode("   ", "password", WifiSecurity::Wpa, false)
                 .unwrap_err()
                 .code(),
             ErrorCode::InvalidWifi
         );
         assert_eq!(
-            encode("\t\n", "pw", WifiSecurity::Wpa, false)
+            encode("\t\n", "password", WifiSecurity::Wpa, false)
                 .unwrap_err()
                 .code(),
             ErrorCode::InvalidWifi
@@ -183,5 +187,23 @@ mod tests {
     fn an_open_network_accepts_any_password_field() {
         let payload = encode("Cafe", "unused", WifiSecurity::None, false).expect("encode");
         assert_eq!(payload, "WIFI:T:nopass;S:Cafe;;");
+    }
+
+    #[test]
+    fn enforces_utf8_byte_limit_for_ssid() {
+        assert!(encode(&"é".repeat(16), "password", WifiSecurity::Wpa, false).is_ok());
+        assert!(encode(&"é".repeat(17), "password", WifiSecurity::Wpa, false).is_err());
+    }
+
+    #[test]
+    fn validates_wpa_passphrases_and_raw_keys() {
+        for password in ["short", "пароль123", "password\n", "nothex"] {
+            assert!(encode("Home", password, WifiSecurity::Wpa, false).is_err());
+        }
+        assert!(encode("Home", &"a".repeat(63), WifiSecurity::Wpa, false).is_ok());
+        assert!(encode("Home", &"a".repeat(64), WifiSecurity::Wpa, false).is_ok());
+        assert!(encode("Home", &"g".repeat(64), WifiSecurity::Wpa, false).is_err());
+        assert!(encode("Home", &"a".repeat(65), WifiSecurity::Wpa, false).is_err());
+        assert!(encode("Home", &"ignored\n".repeat(20), WifiSecurity::None, false).is_ok());
     }
 }

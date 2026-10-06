@@ -215,7 +215,7 @@ fn scheme_prefix(url: &str) -> &'static str {
 /// Build the "keep what I typed" alternative for a detected URL.
 pub fn original_text_payload(input: &str) -> QrPayload {
     QrPayload::Text {
-        text: input.trim().to_string(),
+        text: input.to_string(),
     }
 }
 

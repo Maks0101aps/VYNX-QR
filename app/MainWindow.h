@@ -72,6 +72,9 @@ private slots:
   void onLogoDropped(const QString &path);
 
 private:
+  friend class MainWindowTest;
+  bool exportToFile(const QString &path, vynx::ExportFormat format);
+  void applyTheme();
   /// Build the composer column: smart input, or a structured form.
   void buildComposer(QWidget *composer);
   void buildPreview(QWidget *pane);

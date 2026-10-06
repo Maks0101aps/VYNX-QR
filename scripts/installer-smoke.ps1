@@ -49,7 +49,10 @@ try {
   Assert-Check 'Application installed in the current user profile' (Test-Path -LiteralPath $exe)
   foreach ($relativePath in @(
     'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll',
-    'platforms\qwindows.dll', 'styles\qmodernwindowsstyle.dll', 'Uninstall.exe'
+    'platforms\qwindows.dll', 'styles\qmodernwindowsstyle.dll', 'Uninstall.exe',
+    'LICENSE', 'THIRD_PARTY_LICENSES.md', 'licenses\qt\LGPL-3.0.txt',
+    'licenses\qt\GPL-3.0.txt', 'licenses\qt\README.md',
+    'licenses\qt\qtbase-everywhere-src-6.8.3.tar.xz'
   )) {
     Assert-Check "Installed payload: $relativePath" (Test-Path -LiteralPath (Join-Path $installDir $relativePath))
   }

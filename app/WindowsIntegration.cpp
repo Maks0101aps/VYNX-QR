@@ -10,7 +10,7 @@
 
 namespace WindowsIntegration {
 
-void applyWindowChrome(void *window) {
+void applyWindowChrome(void *window, bool dark) {
   if (window == nullptr) {
     return;
   }
@@ -21,13 +21,13 @@ void applyWindowChrome(void *window) {
 
   // Rounded corners on Windows 11. Unsupported builds ignore the value, and the
   // window keeps its square corners, so there is nothing to fall back to.
-  const int preference = 2; // DWMWCP_WINDOW_CORNER_PREFERENCE
-  const int rounded = 2;    // DWMWCP_ROUND
-  DwmSetWindowAttribute(handle, 20 /*DWMWA_WINDOW_CORNER_PREFERENCE*/,
-                        &preference, sizeof(preference));
-  DwmSetWindowAttribute(handle, 33 /*DWMWA_BORDER_COLOR*/, nullptr, 0);
-  DwmSetWindowAttribute(handle, 34 /*DWMWA_CAPTION_COLOR*/, nullptr, 0);
-  (void)rounded;
+  const BOOL useDark = dark ? TRUE : FALSE;
+  const DWM_WINDOW_CORNER_PREFERENCE corners = DWMWCP_ROUND;
+  const COLORREF defaultColour = DWMWA_COLOR_DEFAULT;
+  DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+  DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corners, sizeof(corners));
+  DwmSetWindowAttribute(handle, DWMWA_BORDER_COLOR, &defaultColour, sizeof(defaultColour));
+  DwmSetWindowAttribute(handle, DWMWA_CAPTION_COLOR, &defaultColour, sizeof(defaultColour));
 }
 
 bool isWindows11() {
@@ -46,7 +46,7 @@ QString versionString() {
 #ifdef VYNX_VERSION
   return QStringLiteral(VYNX_VERSION);
 #else
-  return QStringLiteral("1.0.0");
+  return QStringLiteral("1.0.1");
 #endif
 }
 

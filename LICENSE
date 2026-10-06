@@ -42,6 +42,12 @@ Section. The Software is free to use.
 3. RESTRICTIONS — MODIFICATION AND REDISTRIBUTION
 ================================================================================
 
+These restrictions apply only to the VYNX application. They do not restrict
+modification, replacement, relinking or redistribution of third party libraries
+under their own licences. Reverse engineering of the combined application for
+debugging modifications to LGPL libraries is expressly permitted. No provision
+of this Licence limits rights granted by the LGPL or other dependency licences.
+
 The permission in Section 2 is permission to *use*, not to *change*. Unless you
 have the Licensor's prior written permission, you must not:
 
@@ -137,7 +143,7 @@ published under, so nothing you did in good faith is retroactively unlawful.
 
 VYNX QR is built on open source software, which remains under its own licence.
 This Licence covers only VYNX QR itself and never restricts the licences of its
-dependencies, which are permissive by design.
+dependencies, including Qt under LGPL-3.0.
 
-Full dependency licences: see `Cargo.lock`, `package-lock.json`, and the licence
-files shipped with each dependency.
+Dependency information: see THIRD_PARTY_LICENSES.md and the licence and source
+files under licenses/ in the distribution.
