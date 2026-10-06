@@ -79,7 +79,14 @@ jobs:
         # Not assumed to be present. The hosted Windows images list Inno Setup and
         # WiX, and makensis is not guaranteed, so a release must not depend on it
         # being there by luck.
-        run: choco install nsis --yes --no-progress
+        run: |
+          choco install nsis --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $nsisDir = "${env:ProgramFiles(x86)}\NSIS"
+          if (-not (Test-Path -LiteralPath "$nsisDir\makensis.exe")) {
+            throw "makensis.exe was not found under $nsisDir"
+          }
+          $nsisDir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Verify makensis
         run: makensis /VERSION
