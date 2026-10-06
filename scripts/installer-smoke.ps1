@@ -67,24 +67,29 @@ try {
 
   $applicationStart = Get-Date
   $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
+  $startupWait = [System.Diagnostics.Stopwatch]::StartNew()
   $deadline = (Get-Date).AddSeconds(20)
   do {
     Start-Sleep -Milliseconds 250
     $app.Refresh()
   } while (-not $app.HasExited -and -not $app.MainWindowHandle -and (Get-Date) -lt $deadline)
+  $startupWait.Stop()
   $app.Refresh()
   $report.application = [ordered]@{
     exited = $app.HasExited
     exitCode = if ($app.HasExited) { $app.ExitCode } else { $null }
     mainWindowHandle = $app.MainWindowHandle
+    mainWindowTitle = $app.MainWindowTitle
+    sessionId = $app.SessionId
+    elapsedSeconds = $startupWait.Elapsed.TotalSeconds
+    responding = $app.Responding
+    qtModules = @($app.Modules | Where-Object { $_.ModuleName -like 'Qt6*.dll' } | ForEach-Object { $_.FileName })
   }
-  if ($app.HasExited) {
-    $report.startupEvents = @(
-      Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $applicationStart } -ErrorAction SilentlyContinue |
-        Where-Object { $_.Level -le 2 -and ($_.Message -match 'VYNX QR|VYNX_QR|Qt6|SideBySide|Application Error') } |
-        Select-Object -First 10 TimeCreated, ProviderName, Id, Message
-    )
-  }
+  $report.startupEvents = @(
+    Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $applicationStart } -ErrorAction SilentlyContinue |
+      Where-Object { $_.Level -le 2 -and ($_.Message -match 'VYNX QR|VYNX_QR|Qt6|SideBySide|Application Error') } |
+      Select-Object -First 10 TimeCreated, ProviderName, Id, Message
+  )
   Assert-Check 'Installed application creates a window' (-not $app.HasExited -and $app.MainWindowHandle -ne 0)
   Start-Sleep -Seconds 3
   $app.Refresh()
