@@ -66,8 +66,8 @@ private:
   /// Push the current widget values into `options`.
   void writeInto(vynx::RenderOptions &options) const;
 
-  /// Repaint both colour swatches from the current text fields.
-  void updateSwatch(const QString &hex);
+  /// Keep a swatch and its last valid colour together.
+  void updateSwatch(QPushButton *swatch, const QString &hex);
 
   QComboBox *moduleStyle_ = nullptr;
   QComboBox *errorCorrection_ = nullptr;

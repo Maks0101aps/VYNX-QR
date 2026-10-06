@@ -51,6 +51,7 @@ bool isLogoMimeData(const QMimeData *mime) {
 } // namespace
 
 QrPreview::QrPreview(QWidget *parent) : QWidget(parent) {
+  setAcceptDrops(true);
   layout_ = new QHBoxLayout(this);
   layout_->setContentsMargins(0, 0, 0, 0);
   layout_->setSpacing(0);
@@ -64,7 +65,7 @@ QrPreview::QrPreview(QWidget *parent) : QWidget(parent) {
   image_->setMinimumSize(Tokens::PreviewMaximum, Tokens::PreviewMaximum);
   image_->setAccessibleName(QStringLiteral("Generated QR code"));
   // A drop target has to advertise itself.
-  image_->setAcceptDrops(true);
+  image_->setAcceptDrops(false);
   column->addWidget(image_, 1);
 
   verification_ = new QLabel(this);
@@ -165,12 +166,16 @@ void QrPreview::dragEnterEvent(QDragEnterEvent *event) {
 
 void QrPreview::dropEvent(QDropEvent *event) {
   const QMimeData *mime = event->mimeData();
-  if (mime->hasUrls()) {
+  if (isLogoMimeData(mime)) {
     const QList<QUrl> urls = mime->urls();
-    if (!urls.isEmpty() && urls.first().isLocalFile()) {
-      emit logoDropped(urls.first().toLocalFile());
-      event->acceptProposedAction();
-      return;
+    for (const auto &url : urls) {
+      QMimeData candidate;
+      candidate.setUrls({url});
+      if (isLogoMimeData(&candidate)) {
+        emit logoDropped(url.toLocalFile());
+        event->acceptProposedAction();
+        return;
+      }
     }
   }
   QWidget::dropEvent(event);

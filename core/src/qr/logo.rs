@@ -48,16 +48,30 @@ impl LogoAsset {
                 format!("{} bytes", bytes.len()),
             ));
         }
-        let image = image::load_from_memory(bytes)
+        let reader = || {
+            image::ImageReader::new(std::io::Cursor::new(bytes))
+                .with_guessed_format()
+                .map_err(|error| err_with(ErrorCode::LogoDecodeFailed, error))
+        };
+        let (width, height) = reader()?
+            .into_dimensions()
             .map_err(|error| err_with(ErrorCode::LogoDecodeFailed, error))?;
-        let rgba = image.to_rgba8();
-        let (width, height) = rgba.dimensions();
         if width == 0 || height == 0 {
             return Err(err_with(ErrorCode::LogoDecodeFailed, "zero sized image"));
         }
         if width > MAX_LOGO_EDGE || height > MAX_LOGO_EDGE {
             return Err(err_with(ErrorCode::LogoTooBig, format!("{width}x{height}")));
         }
+        let mut limits = image::Limits::default();
+        limits.max_image_width = Some(MAX_LOGO_EDGE);
+        limits.max_image_height = Some(MAX_LOGO_EDGE);
+        limits.max_alloc = Some(128 * 1024 * 1024);
+        let mut decoder = reader()?;
+        decoder.limits(limits);
+        let rgba = decoder
+            .decode()
+            .map_err(|error| err_with(ErrorCode::LogoDecodeFailed, error))?
+            .to_rgba8();
         Ok(Self {
             name,
             width,
@@ -175,6 +189,26 @@ mod tests {
                 .unwrap_err()
                 .code(),
             ErrorCode::LogoDecodeFailed
+        );
+    }
+
+    #[test]
+    fn rejects_oversized_dimensions_before_decoding_pixels() {
+        let pixels = image::RgbaImage::new(MAX_LOGO_EDGE + 1, 1);
+        let mut out = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(pixels)
+            .write_to(&mut out, image::ImageFormat::Png)
+            .unwrap();
+        let mut bytes = out.into_inner();
+        // Keep PNG metadata and the IDAT header, but remove its compressed data.
+        // A full decode would fail; the dimension preflight must refuse first.
+        let idat = bytes.windows(4).position(|chunk| chunk == b"IDAT").unwrap();
+        bytes.truncate(idat + 4);
+        assert_eq!(
+            LogoAsset::from_bytes("huge.png".into(), &bytes)
+                .unwrap_err()
+                .code(),
+            ErrorCode::LogoTooBig
         );
     }
 

@@ -13,13 +13,14 @@ Unicode true
 !include "MUI2.nsh"
 
 !ifndef VYNX_VERSION
-  !define VYNX_VERSION "1.0.0"
+  !define VYNX_VERSION "1.0.1"
 !endif
 !ifndef VYNX_PAYLOAD_DIR
   !define VYNX_PAYLOAD_DIR "..\\bin"
 !endif
 !ifndef VYNX_ICON
-  !define VYNX_ICON "..\\..\\src-tauri\\icons\\icon.ico"
+  ; CMake resolves app/resources/icons/icon.ico for the generated script.
+  !define VYNX_ICON "@VYNX_RC_ICON@"
 !endif
 !ifndef VYNX_LICENSE
   !define VYNX_LICENSE "..\\..\\LICENSE"
@@ -66,6 +67,10 @@ VIAddVersionKey "LegalURL"        "https://github.com/Maks0101aps/VYNX-QR"
 
 Section "VYNX QR" InstallSection
   SetOutPath "$INSTDIR"
+
+  File "${VYNX_PAYLOAD_DIR}\LICENSE"
+  File "${VYNX_PAYLOAD_DIR}\THIRD_PARTY_LICENSES.md"
+  File /r "${VYNX_PAYLOAD_DIR}\licenses"
 
   ; The executable and the Qt runtime beside it. No service, no scheduled task,
   ; no autostart, nothing running after the window closes.

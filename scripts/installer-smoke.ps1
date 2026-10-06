@@ -49,10 +49,36 @@ try {
   Assert-Check 'Application installed in the current user profile' (Test-Path -LiteralPath $exe)
   foreach ($relativePath in @(
     'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll',
-    'platforms\qwindows.dll', 'styles\qmodernwindowsstyle.dll', 'Uninstall.exe'
+    'platforms\qwindows.dll', 'styles\qmodernwindowsstyle.dll', 'Uninstall.exe',
+    'LICENSE', 'THIRD_PARTY_LICENSES.md', 'licenses\qt\LGPL-3.0.txt',
+    'licenses\rust\THIRD_PARTY_RUST_LICENSES.html', 'licenses\rust\manifest.json',
+    'licenses\qt\GPL-3.0.txt', 'licenses\qt\README.md',
+    'licenses\qt\qtbase-everywhere-src-6.8.3.tar.xz'
   )) {
     Assert-Check "Installed payload: $relativePath" (Test-Path -LiteralPath (Join-Path $installDir $relativePath))
   }
+
+  $rustRoot = Join-Path $installDir 'licenses\rust'
+  $rust = Get-Content -LiteralPath (Join-Path $rustRoot 'manifest.json') -Raw | ConvertFrom-Json
+  $names = @($rust.crates | ForEach-Object { $_.name })
+  Assert-Check 'Rust bundle covers production crates and excludes build/dev-only tooling' (
+    $rust.target -eq 'x86_64-pc-windows-msvc' -and
+    @('qrcode', 'rqrr', 'image', 'serde', 'cxx', 'windows' | Where-Object { $_ -notin $names }).Count -eq 0 -and
+    @('cxx-build', 'tempfile', 'cc' | Where-Object { $_ -in $names }).Count -eq 0
+  )
+  $noticeCount = 0
+  foreach ($crate in $rust.crates) {
+    foreach ($notice in $crate.notice_sha256.PSObject.Properties) {
+      $path = Join-Path $rustRoot "notices\$($crate.name)-$($crate.version)\$($notice.Name)"
+      if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $notice.Value) {
+        throw "Rust notice hash mismatch: $path"
+      }
+      $noticeCount++
+    }
+  }
+  Assert-Check 'Installed Rust upstream licence and copyright notices match manifest hashes' ($noticeCount -gt 0)
+  $report.rustCrates = $rust.crates.Count
+  $report.rustNoticeFiles = $noticeCount
 
   Assert-Check 'Apps and Features registration created for current user' (Test-Path -LiteralPath $uninstallKey)
   $registration = Get-ItemProperty -LiteralPath $uninstallKey

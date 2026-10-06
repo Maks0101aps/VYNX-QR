@@ -9,48 +9,35 @@ Qt is used under the **GNU Lesser General Public License version 3** and, at you
 option, the **GNU General Public License version 3**.
 
 - Qt 6 Widgets: `Qt6Core`, `Qt6Gui`, `Qt6Widgets`, `platforms/qwindows.dll`
-- Licence text: <https://www.gnu.org/licenses/lgpl-3.0.html>
-- Qt sources: <https://download.qt.io/official_releases/qt/6.8/>
+- Full licence texts: `licenses/qt/LGPL-3.0.txt` and `GPL-3.0.txt`.
+- Complete corresponding Qt Base 6.8.3 source: bundled under `licenses/qt/`.
+- Source provenance, hash, build and DLL replacement instructions: `licenses/qt/README.md`.
 
-### How this project complies
+Qt is dynamically linked and unmodified. Users may replace the Qt DLLs and
+plugins and reverse engineer the combined application to debug modifications
+to LGPL libraries; the VYNX licence explicitly preserves these rights.
+The About dialog identifies the use of Qt and the bundled licence information.
 
-Qt is **dynamically linked**. The application links `Qt6Core.dll`, `Qt6Gui.dll`
-and `Qt6Widgets.dll`, which are shipped separately in the installer and in the
-portable archive. Nothing from Qt is compiled into `VYNX QR.exe`.
-
-This matters in two directions. Dynamic linking is what the LGPL prefers for an
-application, and it also keeps the executable replaceable and updatable on its
-own. Qt is deliberately **not** statically linked: it would require either
-reimplementing its plugin loading or making the platform plugin a build-time
-choice, and it would change the licensing obligations.
-
-Qt's source is not modified. The application uses only documented public API.
-
-The deployed runtime was audited and trimmed to what this application can
-actually reach. Qt6Network, Qt6Svg, the image format plugins, the icon engine
-plugins, the TLS backends and the DirectX shader compiler are not shipped,
-because this application opens no socket, writes its own SVG as text, and
-receives images as already decoded pixels.
+Qt's source archive also contains notices for its bundled third party code.
+The package targets enforce the pinned Qt version and source hash.
 
 ## Rust crates
 
-The engine links these crates. Each is permissive.
+The installer and portable archive include the generated bundle under
+`licenses/rust/THIRD_PARTY_RUST_LICENSES.html`. It contains exact crate versions,
+licence expressions, authors, complete licence texts and copyright notices.
+Original upstream LICENSE, NOTICE, COPYING and COPYRIGHT files are also
+preserved unmodified under `licenses/rust/notices/`.
 
-| Crate | Licence |
-| --- | --- |
-| `qrcode` | MIT |
-| `rqrr` | MIT |
-| `image` | MIT / Apache-2.0 |
-| `serde` | MIT OR Apache-2.0 |
-| `serde_json` | MIT OR Apache-2.0 |
-| `thiserror` | MIT OR Apache-2.0 |
-| `base64` | MIT OR Apache-2.0 |
-| `cxx` | Apache-2.0 OR MIT |
-| `cxx-build` | Apache-2.0 OR MIT |
-| `windows` | MIT OR Apache-2.0 |
+`licenses/rust/manifest.json` records the bridge lockfile SHA256, selected
+licences and SHA256 of every original notice file. Packaging regenerates the
+bundle with pinned, hash-verified cargo-about 0.9.2 from `bridge/Cargo.lock`,
+using the default-feature `x86_64-pc-windows-msvc` production dependency graph.
+Build-only and development-only dependencies are excluded. Production procedural
+macro dependencies are retained conservatively; the inventory does not claim
+that every crate contributes machine code after linker optimisation.
 
-The exact versions are in `Cargo.lock`, which also records the resolved licence
-metadata for each dependency.
+Licence resolution or a missing upstream notice file causes packaging to fail.
 
 ## Build tooling
 
@@ -60,9 +47,11 @@ Used to build, not shipped:
 | --- | --- |
 | CMake | BSD-3-Clause |
 | NSIS | zlib/libpng, historically used by the NSIS project |
+| cargo-about | MIT OR Apache-2.0 |
 
 ## What is not here
 
 No JavaScript runtime, no browser engine, no web view, no analytics, no crash
-reporting service and no network client. The shipped application consists of one
-executable and three Qt DLLs.
+reporting service and no network client. The executable runtime consists of one
+application process and dynamically linked Qt runtime libraries; no browser
+runtime or network client is shipped.

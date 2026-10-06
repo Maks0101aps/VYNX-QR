@@ -14,7 +14,7 @@ namespace WindowsIntegration {
 ///
 /// Windows 11 draws these itself. On Windows 10 the call is ignored, which is why
 /// nothing here is allowed to fail loudly.
-void applyWindowChrome(void *window);
+void applyWindowChrome(void *window, bool dark);
 
 /// True when the running host is Windows 11 or newer.
 bool isWindows11();
