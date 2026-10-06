@@ -65,6 +65,17 @@
   ],
   "testPresets": [
     {
+      "name": "release",
+      "displayName": "Run the bridge and window tests",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
       "name": "debug",
       "displayName": "Run the bridge tests",
       "configurePreset": "debug",

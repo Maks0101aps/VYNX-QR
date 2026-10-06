@@ -13,6 +13,12 @@
 CMake drives Cargo. There is no separate Rust build step, and no `.lib` to copy by
 hand.
 
+Run the commands below from **Developer PowerShell for VS 2022** with the x64
+toolchain selected. The presets use Ninja, which needs MSVC's `PATH`, `INCLUDE`
+and `LIB` initialized before CMake runs. Setting `CMAKE_CXX_COMPILER=cl` alone
+does not initialize that environment. CI and release workflows use
+`ilammy/msvc-dev-cmd` with `arch: x64` for the same setup.
+
 ## Qt
 
 Point `QTDIR` at the installation, or pass `-DCMAKE_PREFIX_PATH=...` to CMake

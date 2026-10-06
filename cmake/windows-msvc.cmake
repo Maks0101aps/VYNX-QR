@@ -6,8 +6,9 @@
 # find_package(Qt6) simply reports that Qt cannot be found, with nothing about the
 # compiler. Two different problems, one unhelpful message.
 #
-# Naming cl directly is enough: CMake locates Visual Studio through its own
-# registry lookup, so this does not depend on the developer having run vcvars.
+# Ninja requires an initialized MSVC developer environment (PATH, INCLUDE, LIB).
+# Naming cl selects the compiler; it does not locate or initialize Visual Studio.
+# Use an x64 developer prompt locally and msvc-dev-cmd in GitHub Actions.
 
 if(NOT WIN32)
   return()
