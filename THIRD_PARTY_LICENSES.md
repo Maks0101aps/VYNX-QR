@@ -30,7 +30,8 @@ Bundled-Qt package targets enforce their pinned Qt version and source hash.
 
 Windows packages include the generated bundle under
 `licenses/rust/THIRD_PARTY_RUST_LICENSES.html`; Linux system packages use
-`share/doc/vynx-qr/licenses/rust/`. It contains exact crate versions,
+`share/doc/vynx-qr/licenses/rust/` (DEB) or
+`share/licenses/vynx-qr/licenses/rust/` (Arch). It contains exact crate versions,
 licence expressions, authors, complete licence texts and copyright notices.
 Original upstream LICENSE, NOTICE, COPYING and COPYRIGHT files are also
 preserved unmodified under `licenses/rust/notices/`.

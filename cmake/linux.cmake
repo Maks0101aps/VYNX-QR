@@ -1,4 +1,6 @@
 include(GNUInstallDirs)
+set(VYNX_LINUX_LICENSE_DIR "${CMAKE_INSTALL_DATADIR}/doc/vynx-qr" CACHE STRING
+    "Relative installation directory for mandatory dependency notices")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(VYNX_LINUX_DOCS "${CMAKE_BINARY_DIR}/linux-docs")
 set(VYNX_PACKAGE_DIR "${CMAKE_BINARY_DIR}/package")
@@ -21,12 +23,16 @@ foreach(size IN ITEMS 48 64 128 256 512)
 endforeach()
 install(FILES "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.md"
               "${CMAKE_SOURCE_DIR}/packaging/linux/README-licenses.md"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/vynx-qr")
+        DESTINATION "${VYNX_LINUX_LICENSE_DIR}")
+if(NOT VYNX_LINUX_LICENSE_DIR STREQUAL "${CMAKE_INSTALL_DATADIR}/doc/vynx-qr")
+  install(FILES "${CMAKE_SOURCE_DIR}/packaging/linux/README-licenses.md"
+          DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/vynx-qr")
+endif()
 install(FILES "${CMAKE_SOURCE_DIR}/licenses/qt/LGPL-3.0.txt"
               "${CMAKE_SOURCE_DIR}/licenses/qt/GPL-3.0.txt"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/vynx-qr/licenses/qt")
+        DESTINATION "${VYNX_LINUX_LICENSE_DIR}/licenses/qt")
 install(DIRECTORY "${VYNX_LINUX_DOCS}/licenses/rust"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/vynx-qr/licenses")
+        DESTINATION "${VYNX_LINUX_LICENSE_DIR}/licenses")
 
 set(CPACK_GENERATOR DEB)
 set(CPACK_PACKAGE_NAME vynx-qr)

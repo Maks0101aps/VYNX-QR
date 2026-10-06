@@ -23,6 +23,9 @@ def main():
     args = parser.parse_args()
     assert os.geteuid() == 0, 'only installation/removal requires root'
     report = {'artifact': args.package.name, 'success': False}
+    report['pacmanNoExtract'] = [line for line in Path('/etc/pacman.conf').read_text().splitlines()
+                                if line.strip().startswith('NoExtract')]
+    print('Container NoExtract configuration:', report['pacmanNoExtract'], flush=True)
     installed = False
     try:
         digest = hashlib.sha256(args.package.read_bytes()).hexdigest()
@@ -52,7 +55,7 @@ def main():
         run('desktop-file-validate', '/usr/share/applications/vynx-qr.desktop')
         for size in (48, 64, 128, 256, 512):
             assert Path(f'/usr/share/icons/hicolor/{size}x{size}/apps/vynx-qr.png').is_file()
-        run(sys.executable, 'scripts/verify-rust-notices.py', '/usr/share/doc/vynx-qr/licenses/rust',
+        run(sys.executable, 'scripts/verify-rust-notices.py', '/usr/share/licenses/vynx-qr/licenses/rust',
             '--target', 'x86_64-unknown-linux-gnu', '--lockfile', 'bridge/Cargo.lock')
         linked = subprocess.check_output(['ldd', '/usr/bin/vynx-qr'], text=True)
         assert 'not found' not in linked, linked

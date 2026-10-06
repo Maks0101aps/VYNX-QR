@@ -8,6 +8,8 @@ LGPL libraries is permitted by the application licence.
 The Rust bundle in `licenses/rust/` is generated for the Linux production bridge
 graph from the locked dependencies. It includes exact versions, full original
 licence/copyright/NOTICE files and their SHA256 inventory.
+DEB installs these under `/usr/share/doc/vynx-qr/`; Arch uses its standard
+`/usr/share/licenses/vynx-qr/` so mandatory notices survive `NoExtract` doc rules.
 
 AppImage bundles Qt instead of requiring system Qt. Its corresponding source,
 licences and replacement instructions must be included in the AppDir. Extract

@@ -19,6 +19,6 @@ QString systemFontFamily() { return QApplication::font().family(); }
 QString qtLicenseNotice() {
   return QStringLiteral("Uses dynamically linked Qt under LGPL-3.0. System packages provide\n"
                         "Qt libraries and licences; AppImage includes Qt notices and source.\n"
-                        "See share/doc/vynx-qr for dependency notices.");
+                        "Dependency notices are included with the application package.");
 }
 } // namespace PlatformIntegration
