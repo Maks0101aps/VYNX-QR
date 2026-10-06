@@ -154,14 +154,54 @@ jobs:
             build/release/package/SHA256SUMS.txt
           if-no-files-found: error
 
+  installer-smoke:
+    name: Installed package smoke (${{ matrix.runner }})
+    needs: release
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2022, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download installer from this Actions run
+        uses: actions/download-artifact@v4
+        with:
+          name: vynx-qr-release
+          path: artifacts
+
+      - name: Install, launch and uninstall
+        shell: pwsh
+        run: ./scripts/installer-smoke.ps1 -ArtifactDirectory artifacts
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-smoke-${{ matrix.runner }}
+          path: installer-smoke-report.json
+          if-no-files-found: warn
+
+  publish:
+    name: Publish tested release
+    needs: [release, installer-smoke]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the tested release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: vynx-qr-release
+          path: artifacts
+
       - name: Publish
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/release/package/VYNX-QR-Setup-x64-*.exe
-            build/release/package/VYNX-QR-Portable-x64-*.zip
-            build/release/package/SHA256SUMS.txt
+            artifacts/VYNX-QR-Setup-x64-*.exe
+            artifacts/VYNX-QR-Portable-x64-*.zip
+            artifacts/SHA256SUMS.txt
           fail_on_unmatched_files: true
           draft: true
           generate_release_notes: true
@@ -176,3 +216,6 @@ jobs:
 
             Qt is dynamically linked under the LGPL; see
             `THIRD_PARTY_LICENSES.md`.
+
+            Tested on a Windows 11 development machine and clean GitHub Windows runners.
+            Dedicated Windows 10 clean-machine validation pending.
