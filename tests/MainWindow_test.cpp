@@ -324,6 +324,9 @@ private slots:
     auto settings = vynx::load_settings();
     settings.theme = vynx::ThemeMode::Dark;
     window.applySettings(settings);
+    QFile preferences(settingsDir_.filePath(QStringLiteral("VYNX/QR/settings.json")));
+    QVERIFY(preferences.open(QIODevice::ReadOnly));
+    QVERIFY(preferences.readAll().contains("dark"));
     QVERIFY(qApp->palette().color(QPalette::Window).lightness() < 128);
     const auto darkStyle = qApp->styleSheet();
     settings.theme = vynx::ThemeMode::Light;

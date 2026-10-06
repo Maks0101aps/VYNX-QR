@@ -123,6 +123,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   QTimer::singleShot(0, this, &MainWindow::readClipboardOnce);
 
   applyTheme();
+  PlatformIntegration::observeSystemTheme(this, [this] { applyTheme(); });
 }
 
 MainWindow::~MainWindow() = default;
@@ -639,7 +640,7 @@ void MainWindow::applyTheme() {
   widgetPalette.setColor(QPalette::ButtonText, palette.textPrimary);
   widgetPalette.setColor(QPalette::Highlight, palette.accent);
   widgetPalette.setColor(QPalette::HighlightedText, palette.accentText);
-  qApp->setPalette(widgetPalette);
+  PlatformIntegration::setApplicationPalette(widgetPalette);
   qApp->setStyleSheet(styleSheetFor(palette));
   PlatformIntegration::applyWindowChrome(reinterpret_cast<void *>(winId()), palette.isDark());
 }

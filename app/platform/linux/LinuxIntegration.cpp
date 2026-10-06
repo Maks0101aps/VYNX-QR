@@ -1,6 +1,7 @@
 #include "platform/PlatformIntegration.h"
 
 #include <QApplication>
+#include <QFont>
 #include <QStyleHints>
 
 namespace PlatformIntegration {
