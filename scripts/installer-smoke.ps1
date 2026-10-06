@@ -72,7 +72,7 @@ try {
   do {
     Start-Sleep -Milliseconds 250
     $app.Refresh()
-  } while (-not $app.HasExited -and -not $app.MainWindowHandle -and (Get-Date) -lt $deadline)
+  } while (-not $app.HasExited -and ($app.MainWindowHandle -eq [IntPtr]::Zero) -and (Get-Date) -lt $deadline)
   $startupWait.Stop()
   $app.Refresh()
   $report.application = [ordered]@{
