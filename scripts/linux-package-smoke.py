@@ -25,6 +25,10 @@ def main():
     result = {'artifact': package.name, 'success': False, 'checks': []}
     installed = False
     try:
+        version = subprocess.check_output([sys.executable, 'scripts/project-version.py'], text=True).strip()
+        assert subprocess.check_output(['dpkg-deb', '--field', str(package), 'Version'], text=True).strip() == version
+        assert subprocess.check_output(['dpkg-deb', '--field', str(package), 'Package'], text=True).strip() == 'vynx-qr'
+        assert subprocess.check_output(['dpkg-deb', '--field', str(package), 'Architecture'], text=True).strip() == 'amd64'
         digest = hashlib.sha256(package.read_bytes()).hexdigest()
         assert f'{digest}  {package.name}' in args.manifest.read_text().splitlines(), 'artifact hash mismatch'
         result['sha256'] = digest
@@ -70,6 +74,7 @@ def main():
                 runtime_report = args.report.with_suffix(f'.runtime-{display}.json')
                 run('xvfb-run', '-a', sys.executable, 'scripts/linux-window-smoke.py', '/usr/bin/vynx-qr',
                     '--config-home', config, '--report', str(runtime_report), env=env)
+                assert json.loads(runtime_report.read_text())['version'] == f'VYNX QR {version}'
             assert preferences.read_text() == content, 'launch overwrote preferences'
             run('sudo', 'apt-get', 'remove', '-y', 'vynx-qr')
             installed = False
