@@ -65,12 +65,26 @@ try {
   $shortcutTarget = $shell.CreateShortcut($shortcut).TargetPath
   Assert-Check 'Start Menu shortcut targets the installed executable' ($shortcutTarget -eq $exe)
 
-  $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -WindowStyle Hidden -PassThru
+  $applicationStart = Get-Date
+  $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
   $deadline = (Get-Date).AddSeconds(20)
   do {
     Start-Sleep -Milliseconds 250
     $app.Refresh()
   } while (-not $app.HasExited -and -not $app.MainWindowHandle -and (Get-Date) -lt $deadline)
+  $app.Refresh()
+  $report.application = [ordered]@{
+    exited = $app.HasExited
+    exitCode = if ($app.HasExited) { $app.ExitCode } else { $null }
+    mainWindowHandle = $app.MainWindowHandle
+  }
+  if ($app.HasExited) {
+    $report.startupEvents = @(
+      Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $applicationStart } -ErrorAction SilentlyContinue |
+        Where-Object { $_.Level -le 2 -and ($_.Message -match 'VYNX QR|VYNX_QR|Qt6|SideBySide|Application Error') } |
+        Select-Object -First 10 TimeCreated, ProviderName, Id, Message
+    )
+  }
   Assert-Check 'Installed application creates a window' (-not $app.HasExited -and $app.MainWindowHandle -ne 0)
   Start-Sleep -Seconds 3
   $app.Refresh()
