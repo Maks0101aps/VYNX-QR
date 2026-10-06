@@ -212,6 +212,64 @@ jobs:
             build/linux-release/bin/vynx-qr
           if-no-files-found: warn
 
+  arch:
+    name: Arch makepkg and Qt tests
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+    steps:
+      - name: Install native Arch build dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel cmake ninja rust qt6-base qt6-wayland python git desktop-file-utils xorg-server-xvfb xorg-xauth
+      - uses: actions/checkout@v4
+      - name: Build using makepkg as an ordinary user
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- python scripts/prepare-arch-package.py --output build/arch-package --build
+          cd build/arch-package
+          sha256sum vynx-qr-*.pkg.tar.zst > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: |
+            build/arch-package/vynx-qr-*.pkg.tar.zst
+            build/arch-package/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arch-build-evidence
+          path: |
+            build/arch-package/PKGBUILD
+            build/arch-package/source-commit.txt
+            build/arch-package/src/vynx-qr/build/arch-release/Testing/Temporary/
+          if-no-files-found: warn
+
+  arch-smoke:
+    name: Arch artifact install/run/remove
+    needs: arch
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+    steps:
+      - name: Install runtime test infrastructure
+        run: |
+          pacman -Syu --noconfirm python git desktop-file-utils xorg-server-xvfb xorg-xauth openbox wmctrl
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-package
+          path: artifacts
+      - name: Test the actual artifact
+        run: |
+          useradd -m builder
+          python scripts/arch-package-smoke.py artifacts/vynx-qr-*.pkg.tar.zst --manifest artifacts/SHA256SUMS.txt --report build/arch-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arch-smoke-evidence
+          path: build/arch-smoke/
+          if-no-files-found: warn
+
   deb-smoke:
     name: DEB from Actions install/run/remove
     needs: ubuntu
