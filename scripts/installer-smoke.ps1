@@ -79,6 +79,10 @@ try {
   Assert-Check 'Installed Rust upstream licence and copyright notices match manifest hashes' ($noticeCount -gt 0)
   $report.rustCrates = $rust.crates.Count
   $report.rustNoticeFiles = $noticeCount
+  Assert-Check 'Installed Qt corresponding source has the pinned hash' (
+    (Get-FileHash -LiteralPath (Join-Path $installDir 'licenses\qt\qtbase-everywhere-src-6.8.3.tar.xz') -Algorithm SHA256).Hash.ToLowerInvariant() -eq
+    '56001b905601bb9023d399f3ba780d7fa940f3e4861e496a7c490331f49e0b80'
+  )
 
   Assert-Check 'Apps and Features registration created for current user' (Test-Path -LiteralPath $uninstallKey)
   $registration = Get-ItemProperty -LiteralPath $uninstallKey
@@ -90,6 +94,12 @@ try {
   $shell = New-Object -ComObject WScript.Shell
   $shortcutTarget = $shell.CreateShortcut($shortcut).TargetPath
   Assert-Check 'Start Menu shortcut targets the installed executable' ($shortcutTarget -eq $exe)
+
+  $preferences = Join-Path $env:APPDATA 'VYNX\QR\settings.json'
+  Assert-Check 'Clean profile has no application preferences' (-not (Test-Path -LiteralPath $preferences))
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $preferences) | Out-Null
+  $preferenceContent = '{"theme":"dark","defaultSize":512,"clipboardCheck":false}'
+  [System.IO.File]::WriteAllText($preferences, $preferenceContent, [System.Text.UTF8Encoding]::new($false))
 
   $applicationStart = Get-Date
   $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
@@ -120,6 +130,8 @@ try {
   Start-Sleep -Seconds 3
   $app.Refresh()
   Assert-Check 'Application stays running after startup' (-not $app.HasExited)
+  $report.application.privateBytes = $app.PrivateMemorySize64
+  $report.application.workingSetBytes = $app.WorkingSet64
   Assert-Check 'Application has no child processes' (@(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $app.Id }).Count -eq 0)
 
   $qtModules = @($app.Modules | Where-Object { $_.ModuleName -in @('Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll') })
@@ -142,6 +154,10 @@ try {
   Assert-Check 'Start Menu shortcut removed' (-not (Test-Path -LiteralPath $startMenu))
   Assert-Check 'Apps and Features registration removed' (-not (Test-Path -LiteralPath $uninstallKey))
   Assert-Check 'Install settings registration removed' (-not (Test-Path -LiteralPath $settingsKey))
+  Assert-Check 'Uninstall preserves user preferences' (
+    (Test-Path -LiteralPath $preferences) -and
+    (Get-Content -LiteralPath $preferences -Raw).Trim() -eq $preferenceContent
+  )
   $report.success = $true
 } catch {
   $failure = $_.Exception.Message

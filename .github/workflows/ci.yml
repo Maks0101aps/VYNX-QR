@@ -76,8 +76,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            core -> target
-            bridge -> target
+            bridge -> ../build/release/cargo
 
       - name: Install Qt
         # aqtinstall is the mechanism used to produce the reference builds on the
