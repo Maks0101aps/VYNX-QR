@@ -41,7 +41,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: core -> target
+          workspaces: ${{ matrix.crate }} -> target
 
       - name: Formatting
         working-directory: ${{ matrix.crate }}

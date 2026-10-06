@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags: ["v*"]
 
@@ -41,14 +42,18 @@ jobs:
         working-directory: core
         run: |
           cargo fmt --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clippy --all-targets --all-features -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test
 
       - name: Check the bridge
         working-directory: bridge
         run: |
           cargo fmt --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clippy --all-targets --all-features -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test
 
       - name: Install Qt
@@ -95,8 +100,12 @@ jobs:
         shell: pwsh
         run: |
           $package = "build/release/package"
-          $lines = Get-ChildItem $package -File |
-            Where-Object { $_.Extension -in ".exe", ".zip" } |
+          $installer = @(Get-ChildItem "$package/VYNX-QR-Setup-x64-*.exe" -File)
+          $portable = @(Get-ChildItem "$package/VYNX-QR-Portable-x64-*.zip" -File)
+          if ($installer.Count -ne 1 -or $portable.Count -ne 1) {
+            throw "Expected exactly one installer and one portable archive"
+          }
+          $lines = @($installer[0], $portable[0]) |
             ForEach-Object {
               "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
             }
@@ -132,13 +141,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vynx-qr-release
-          path: build/release/package/*
+          path: |
+            build/release/package/VYNX-QR-Setup-x64-*.exe
+            build/release/package/VYNX-QR-Portable-x64-*.zip
+            build/release/package/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Publish
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/release/package/*
+          files: |
+            build/release/package/VYNX-QR-Setup-x64-*.exe
+            build/release/package/VYNX-QR-Portable-x64-*.zip
+            build/release/package/SHA256SUMS.txt
+          fail_on_unmatched_files: true
           draft: true
           generate_release_notes: true
           body: |
