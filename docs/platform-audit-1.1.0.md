@@ -31,3 +31,11 @@ The smoke now observes the missing-client-list startup state until its original
 deadline while checking that the app stays alive. Other wmctrl errors remain
 fatal. Three independent Xvfb/Openbox startups must all pass; the failed report
 is retained, and the workflow is not retried to manufacture a green result.
+
+Arch run 37459931044 reached native compilation but failed to resolve CXX
+support symbols from the Rust static archive. Its compiler/link commands used
+makepkg's default `-flto=auto` on the CXX-generated objects. PKGBUILD disables
+that additional GCC LTO pass (`!lto`) for this mixed Rust/C++ static-library
+build. Rust's configured release LTO and distro hardening flags remain enabled.
+The diagnosis must be confirmed by a real makepkg, bridge and window test run;
+the original failed build log remains evidence.

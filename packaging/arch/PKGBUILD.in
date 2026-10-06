@@ -10,7 +10,10 @@ license=('custom:VYNX-QR')
 depends=('qt6-base' 'qt6-wayland' 'gcc-libs')
 makedepends=('cmake' 'ninja' 'rust' 'python')
 checkdepends=('xorg-server-xvfb' 'xorg-xauth')
-options=('!debug')
+# GCC slim-LTO C++ objects cannot be embedded in rustc's staticlib archive with
+# a usable CXX symbol index. Keep hardening flags and Rust's own release LTO;
+# disable only makepkg's additional, global GCC LTO pass.
+options=('!debug' '!lto')
 source=('vynx-qr-source.tar.gz')
 sha256sums=('@SOURCE_SHA256@')
 
