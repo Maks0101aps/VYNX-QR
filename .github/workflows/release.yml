@@ -10,6 +10,7 @@ permissions:
 env:
   QT_VERSION: "6.8.3"
   QT_ARCH: "win64_msvc2022_64"
+  QT_INSTALL_DIR: "msvc2022_64"
 
 jobs:
   release:
@@ -61,7 +62,12 @@ jobs:
           # steps. The workflow level "env: QTDIR: ${{ env.QT_DIR }}" does not:
           # the env context only covers what the workflow itself declared, not
           # what an earlier step exported.
-          "QTDIR=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\$env:QT_ARCH" |
+          # The aqt architecture includes win64_; the extracted directory does not.
+          $qtDir = "$env:RUNNER_TEMP\Qt\$env:QT_VERSION\$env:QT_INSTALL_DIR"
+          if (-not (Test-Path -LiteralPath "$qtDir\lib\cmake\Qt6\Qt6Config.cmake")) {
+            throw "Qt6Config.cmake was not found under $qtDir"
+          }
+          "QTDIR=$qtDir" |
             Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install NSIS
