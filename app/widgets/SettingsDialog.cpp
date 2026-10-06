@@ -48,10 +48,10 @@ void SettingsDialog::buildAppearance(QVBoxLayout *layout) {
   theme_->setAccessibleName(QStringLiteral("Theme"));
   layout->addWidget(theme_);
 
-  useAccent_ = new QCheckBox(QStringLiteral("Use the Windows accent colour"));
+  useAccent_ = new QCheckBox(QStringLiteral("Use system accent"));
   useAccent_->setChecked(settings_.use_windows_accent);
-  useAccent_->setToolTip(QStringLiteral("Falls back to VYNX blue when Windows reports none."));
-  useAccent_->setAccessibleName(QStringLiteral("Use the Windows accent colour"));
+  useAccent_->setToolTip(QStringLiteral("Uses the system highlight colour, falling back to VYNX blue."));
+  useAccent_->setAccessibleName(QStringLiteral("Use system accent"));
   layout->addWidget(useAccent_);
 
   connect(theme_, &QComboBox::currentIndexChanged, this, [this] {

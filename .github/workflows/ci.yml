@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, CI-fix]
+    branches: [main, CI-fix, 1.1.0-update]
   pull_request:
     branches: [main]
 
@@ -20,16 +20,18 @@ env:
 
 jobs:
   rust:
-    name: Rust (${{ matrix.crate }})
-    runs-on: windows-latest
+    name: Rust (${{ matrix.crate }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         crate: [core, bridge]
+        os: [windows-latest, ubuntu-24.04]
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up MSVC x64
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
@@ -162,3 +164,36 @@ jobs:
             build/release/bin/platforms/
             build/release/bin/styles/
           if-no-files-found: error
+
+  ubuntu:
+    name: Ubuntu native build and window tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland xvfb xauth openbox wmctrl xdotool
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bridge -> ../build/linux-release/cargo
+      - run: cmake --preset linux-release
+      - run: cmake --build --preset linux-release
+      - run: xvfb-run -a ctest --preset linux-release
+      - name: Native GUI launch
+        run: xvfb-run -a python3 scripts/linux-window-smoke.py build/linux-release/bin/vynx-qr --report build/linux-release/window-smoke.json
+      - name: Debug native build and tests
+        run: |
+          cmake --preset linux-debug
+          cmake --build --preset linux-debug
+          xvfb-run -a ctest --preset linux-debug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ubuntu-native-evidence
+          path: |
+            build/linux-release/window-smoke.json
+            build/linux-release/Testing/Temporary/
+            build/linux-debug/Testing/Temporary/
+            build/linux-release/bin/vynx-qr
+          if-no-files-found: warn

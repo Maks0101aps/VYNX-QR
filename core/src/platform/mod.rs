@@ -1,4 +1,9 @@
-//! Platform specific glue. Only Windows is supported in V1; the module name
-//! stays `windows` because that is the only host it does anything for.
-
+//! Host integrations selected at compile time; no desktop-specific Linux queries.
+#[cfg(target_os = "linux")]
+pub mod linux;
+#[cfg(windows)]
 pub mod windows;
+#[cfg(target_os = "linux")]
+pub use linux::{system_info, SystemInfo};
+#[cfg(windows)]
+pub use windows::{system_info, SystemInfo};

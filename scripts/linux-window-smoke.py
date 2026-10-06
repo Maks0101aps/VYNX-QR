@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Exercise a real X11 window; retain metrics and diagnostics on failure."""
+import argparse
+import json
+import os
+from pathlib import Path
+import statistics
+import subprocess
+import tempfile
+import time
+
+
+def command(*args):
+    return subprocess.check_output(args, text=True).strip()
+
+
+def sample(pid):
+    proc = Path('/proc') / str(pid)
+    status = dict(line.split(':', 1) for line in (proc / 'status').read_text().splitlines())
+    memory = {}
+    for name in ('VmRSS', 'VmHWM'):
+        memory[name + '_KiB'] = int(status[name].split()[0])
+    if (proc / 'smaps_rollup').exists():
+        for line in (proc / 'smaps_rollup').read_text().splitlines():
+            if line.startswith('Pss:'):
+                memory['Pss_KiB'] = int(line.split()[1])
+    children = (proc / 'task' / str(pid) / 'children').read_text().split()
+    assert not children, f'application has child processes: {children}'
+    memory['children'] = len(children)
+    fields = (proc / 'stat').read_text().rsplit(')', 1)[1].split()
+    memory['cpu_ticks'] = int(fields[11]) + int(fields[12])
+    return memory
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('executable')
+    parser.add_argument('--report', required=True)
+    parser.add_argument('--runs', type=int, default=5)
+    args = parser.parse_args()
+    report_path = Path(args.report)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report = {'platform': 'X11/Xvfb', 'samples': [], 'success': False}
+    wm = None
+    try:
+        executable = str(Path(args.executable).resolve())
+        version = command(executable, '--version')
+        assert version.startswith('VYNX QR '), version
+        assert 'Usage:' in command(executable, '--help')
+        report['version'] = version
+        wm = subprocess.Popen(['openbox'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Wait for the window manager's readiness property, not an arbitrary delay.
+        deadline = time.monotonic() + 10
+        while subprocess.run(['wmctrl', '-m'], capture_output=True).returncode:
+            assert time.monotonic() < deadline, 'window manager did not become ready'
+            time.sleep(.1)
+        with tempfile.TemporaryDirectory(prefix='vynx smoke ') as config:
+            env = os.environ | {'XDG_CONFIG_HOME': config, 'QT_QPA_PLATFORM': 'xcb'}
+            for index in range(args.runs):
+                log_path = report_path.with_suffix(f'.{index}.stderr.log')
+                with log_path.open('w') as log:
+                    started = time.monotonic()
+                    app = subprocess.Popen([executable], env=env, stdout=log, stderr=log)
+                    try:
+                        deadline = started + 20
+                        window = None
+                        while not window:
+                            assert app.poll() is None, f'application exited: {app.returncode}; see {log_path}'
+                            for row in command('wmctrl', '-lp').splitlines():
+                                fields = row.split(None, 4)
+                                if len(fields) == 5 and fields[2] == str(app.pid) and 'VYNX QR' in fields[4]:
+                                    window = fields[0]
+                                    break
+                            assert time.monotonic() < deadline, 'no application window'
+                            if not window:
+                                time.sleep(.05)
+                        elapsed = (time.monotonic() - started) * 1000
+                        before = sample(app.pid)
+                        idle_started = time.monotonic()
+                        time.sleep(1)
+                        after = sample(app.pid)
+                        after['idle_cpu_percent'] = 100 * (after['cpu_ticks'] - before['cpu_ticks']) / os.sysconf('SC_CLK_TCK') / (time.monotonic() - idle_started)
+                        after['startup_ms'] = elapsed
+                        report['samples'].append(after)
+                        # A window-manager close exercises the normal Qt close path.
+                        subprocess.run(['wmctrl', '-ic', window], check=True)
+                        assert app.wait(timeout=10) == 0, 'application did not close cleanly'
+                        report['settings_path'] = str(Path(config) / 'VYNX/QR/settings.json')
+                    finally:
+                        if app.poll() is None:
+                            app.terminate()
+                            app.wait(timeout=10)
+            report['first_startup_ms'] = report['samples'][0]['startup_ms']
+            report['warm_median_startup_ms'] = statistics.median(s['startup_ms'] for s in report['samples'][1:] or report['samples'])
+        report['success'] = True
+    except Exception as error:
+        report['error'] = str(error)
+        raise
+    finally:
+        if wm:
+            wm.terminate()
+            wm.wait(timeout=10)
+        report_path.write_text(json.dumps(report, indent=2) + '\n')
+        print(json.dumps(report, indent=2))
+
+
+if __name__ == '__main__':
+    main()

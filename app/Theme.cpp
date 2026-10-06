@@ -1,4 +1,5 @@
 #include "Theme.h"
+#include "platform/PlatformIntegration.h"
 
 #include <QApplication>
 #include <QFontDatabase>
@@ -44,7 +45,7 @@ QColor vynxBlue() { return QColor("#2F6FEB"); }
 
 Palette makePalette(const QString &theme, const QColor &accent) {
   const bool systemDark =
-      QApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+      PlatformIntegration::systemPrefersDarkMode();
   const bool dark = theme == QStringLiteral("dark") || (theme == QStringLiteral("system") && systemDark);
 
   Palette palette;
@@ -72,7 +73,7 @@ Palette makePalette(const QString &theme, const QColor &accent) {
     palette.danger = Danger;
   }
 
-  // An accent is a choice the user already made in Windows, so it is used as
+  // An accent is a choice the user already made in the system, so it is used as
   // given. Only the text on top of it is adjusted for legibility.
   palette.accent = accent.isValid() ? accent : vynxBlue();
   palette.accentText = readableOn(palette.accent);
@@ -152,7 +153,7 @@ QToolTip {
   padding: 4px 6px;
 }
 )")
-      .arg(QStringLiteral("Segoe UI Variable Text"),
+      .arg(systemFontFamily(),
            palette.textPrimary.name(),
            palette.window.name(),
            palette.textSecondary.name(),
@@ -164,21 +165,9 @@ QToolTip {
       .arg(accent)
       .arg(accentText)
       // Hover and pressed accent are derived rather than stored, so a custom
-      // Windows accent still gets a complete set of interaction states.
+      // system accent still gets a complete set of interaction states.
       .arg(palette.accent.lighter(112).name())
       .arg(palette.accent.darker(112).name());
 }
 
-QString systemFontFamily() {
-  const QStringList preferred = {
-      QStringLiteral("Segoe UI Variable Text"),
-      QStringLiteral("Segoe UI"),
-  };
-  const QStringList families = QFontDatabase::families();
-  for (const QString &name : preferred) {
-    if (families.contains(name, Qt::CaseInsensitive)) {
-      return name;
-    }
-  }
-  return QStringLiteral("Segoe UI");
-}
+QString systemFontFamily() { return PlatformIntegration::systemFontFamily(); }

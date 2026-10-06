@@ -17,7 +17,7 @@
 #include <QVBoxLayout>
 
 #include "Theme.h"
-#include "WindowsIntegration.h"
+#include "platform/PlatformIntegration.h"
 #include "widgets/AboutDialog.h"
 #include "widgets/Bridge.h"
 #include "widgets/ClipboardSuggestion.h"
@@ -624,9 +624,8 @@ void MainWindow::applySettings(const vynx::Settings &settings) {
 }
 
 void MainWindow::applyTheme() {
-  const auto info = vynx::system_info();
   const QColor accent = settings_.use_windows_accent
-      ? QColor::fromString(vynxq::toQString(info.accent_color)) : QColor();
+      ? PlatformIntegration::systemAccentColor() : QColor();
   const auto palette = makePalette(
       settings_.theme == vynx::ThemeMode::Dark ? QStringLiteral("dark")
       : settings_.theme == vynx::ThemeMode::Light ? QStringLiteral("light")
@@ -642,7 +641,7 @@ void MainWindow::applyTheme() {
   widgetPalette.setColor(QPalette::HighlightedText, palette.accentText);
   qApp->setPalette(widgetPalette);
   qApp->setStyleSheet(styleSheetFor(palette));
-  WindowsIntegration::applyWindowChrome(reinterpret_cast<void *>(winId()), palette.isDark());
+  PlatformIntegration::applyWindowChrome(reinterpret_cast<void *>(winId()), palette.isDark());
 }
 
 void MainWindow::onOpenAbout() {

@@ -34,6 +34,7 @@
 #include <rust/cxx.h>
 
 #include "MainWindow.h"
+#include "platform/PlatformIntegration.h"
 #include "widgets/ClipboardSuggestion.h"
 #include "widgets/CustomizePanel.h"
 #include "widgets/QrPreview.h"
@@ -57,14 +58,20 @@ class MainWindowTest : public QObject {
 
 private slots:
   void initTestCase() {
+    PlatformIntegration::captureSystemPalette();
     originalAppData_ = qgetenv("APPDATA");
+    originalXdg_ = qgetenv("XDG_CONFIG_HOME");
     QVERIFY(settingsDir_.isValid());
     qputenv("APPDATA", settingsDir_.path().toUtf8());
+    qputenv("XDG_CONFIG_HOME", settingsDir_.path().toUtf8());
     // The window reads the clipboard once at start-up, so a test must not be able
     // to be influenced by whatever the developer happened to copy.
     QApplication::clipboard()->clear();
   }
-  void cleanupTestCase() { qputenv("APPDATA", originalAppData_); }
+  void cleanupTestCase() {
+    if (originalAppData_.isNull()) qunsetenv("APPDATA"); else qputenv("APPDATA", originalAppData_);
+    if (originalXdg_.isNull()) qunsetenv("XDG_CONFIG_HOME"); else qputenv("XDG_CONFIG_HOME", originalXdg_);
+  }
 
   /// The bug that started all this: the code must appear as text is entered, with
   /// no Enter pressed and no explicit call.
@@ -298,10 +305,10 @@ private slots:
     QCOMPARE(QApplication::clipboard()->image().size(), QSize(256, 256));
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
-    const auto png = dir.filePath(QStringLiteral("qr.png"));
+    const auto png = dir.filePath(QStringLiteral("код with spaces.png"));
     QVERIFY(window.exportToFile(png, vynx::ExportFormat::Png));
     QCOMPARE(QImage(png).size(), QSize(256, 256));
-    const auto svg = dir.filePath(QStringLiteral("qr.svg"));
+    const auto svg = dir.filePath(QStringLiteral("код with spaces.svg"));
     QVERIFY(window.exportToFile(svg, vynx::ExportFormat::Svg));
     QFile file(svg);
     QVERIFY(file.open(QIODevice::ReadOnly));
@@ -330,8 +337,14 @@ private slots:
     present(preview);
     QVERIFY(preview.acceptDrops());
     for (auto *label : preview.findChildren<QLabel *>()) QVERIFY(!label->acceptDrops());
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("логотип with spaces.png"));
+    QImage logo(32, 32, QImage::Format_ARGB32);
+    logo.fill(Qt::blue);
+    QVERIFY(logo.save(path));
     QMimeData mime;
-    mime.setUrls({QUrl::fromLocalFile(QStringLiteral("C:/logo.png"))});
+    mime.setUrls({QUrl::fromLocalFile(path)});
     QSignalSpy dropped(&preview, &QrPreview::logoDropped);
     QDragEnterEvent drag(QPoint(10, 10), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
     QApplication::sendEvent(&preview, &drag);
@@ -340,12 +353,13 @@ private slots:
     QApplication::sendEvent(&preview, &drop);
     QVERIFY(drop.isAccepted());
     QCOMPARE(dropped.size(), 1);
-    QCOMPARE(dropped.at(0).at(0).toString(), QStringLiteral("C:/logo.png"));
+    QCOMPARE(dropped.at(0).at(0).toString(), path);
   }
 
 private:
   QTemporaryDir settingsDir_;
   QByteArray originalAppData_;
+  QByteArray originalXdg_;
   static QString verifyLabel(vynx::VerifyStatus status) {
     if (status == vynx::VerifyStatus::Failed) {
       return QStringLiteral("QR could not be verified");

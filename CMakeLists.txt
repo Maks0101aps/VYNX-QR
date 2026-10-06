@@ -7,8 +7,8 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(VYNX_QR
-  VERSION 1.0.1
-  DESCRIPTION "Fast, private QR codes for Windows."
+  VERSION 1.1.0
+  DESCRIPTION "Fast, private QR codes for Windows and Linux."
   HOMEPAGE_URL "https://github.com/Maks0101aps/VYNX-QR"
   LANGUAGES CXX
 )
@@ -60,7 +60,7 @@ if(VYNX_BUILD_APP OR VYNX_BUILD_WINDOW_TESTS)
   # that Qt is missing. It cannot link against MinGW objects, and it cannot link
   # against an MSVC Rust static library, and the message it produces in that
   # situation mentions neither.
-  if(NOT MSVC)
+  if(WIN32 AND NOT MSVC)
     message(FATAL_ERROR
       "VYNX QR needs MSVC, but CMake selected ${CMAKE_CXX_COMPILER_ID} "
       "(${CMAKE_CXX_COMPILER}).\n"
@@ -80,8 +80,8 @@ if(VYNX_BUILD_WINDOW_TESTS)
   find_package(Qt6 REQUIRED COMPONENTS Test)
 endif()
 
-if(VYNX_BUILD_APP AND Qt6_VERSION VERSION_LESS 6.5)
-  message(FATAL_ERROR "Qt 6.5 or newer is required, found ${Qt6_VERSION}")
+if(VYNX_BUILD_APP AND Qt6_VERSION VERSION_LESS 6.4)
+  message(FATAL_ERROR "Qt 6.4 or newer is required, found ${Qt6_VERSION}")
 endif()
 
 if(VYNX_BUILD_APP)
@@ -157,7 +157,15 @@ get_filename_component(VYNX_BRIDGE_INCLUDE_ROOT "${VYNX_BRIDGE_INCLUDE_ROOT}" DI
 
 message(STATUS "Bridge header: ${VYNX_BRIDGE_HEADER}")
 
-set(VYNX_BRIDGE_LIB "${VYNX_CARGO_PROFILE_DIR}/vynx_qr_bridge.lib")
+if(WIN32)
+  set(VYNX_BRIDGE_LIB "${VYNX_CARGO_PROFILE_DIR}/vynx_qr_bridge.lib")
+  set(VYNX_PLATFORM_BACKEND app/platform/windows/WindowsIntegration.cpp)
+else()
+  set(VYNX_BRIDGE_LIB "${VYNX_CARGO_PROFILE_DIR}/libvynx_qr_bridge.a")
+  set(VYNX_PLATFORM_BACKEND app/platform/linux/LinuxIntegration.cpp)
+endif()
+set(VYNX_PLATFORM_SOURCES app/platform/PlatformIntegration.cpp
+    app/platform/PlatformIntegration.h ${VYNX_PLATFORM_BACKEND})
 
 if(NOT EXISTS "${VYNX_BRIDGE_LIB}")
   message(FATAL_ERROR "Expected the Rust static library at ${VYNX_BRIDGE_LIB}")
@@ -176,8 +184,7 @@ add_executable(VYNX_QR WIN32
   app/MainWindow.h
   app/Theme.cpp
   app/Theme.h
-  app/WindowsIntegration.cpp
-  app/WindowsIntegration.h
+  ${VYNX_PLATFORM_SOURCES}
   app/widgets/AboutDialog.cpp
   app/widgets/AboutDialog.h
   app/widgets/Bridge.cpp
@@ -221,98 +228,12 @@ if(MSVC)
   )
 endif()
 
-# ---------------------------------------------------------------------------
-# Windows resources: icon, version information, common controls v6
-# ---------------------------------------------------------------------------
-set(VYNX_ICON_DIR "app/resources/icons")
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(VYNX_RC_ARCH "x64")
+if(WIN32)
+  include(cmake/windows.cmake)
 else()
-  set(VYNX_RC_ARCH "x86")
+  set_target_properties(VYNX_QR PROPERTIES OUTPUT_NAME "vynx-qr")
 endif()
-set(VYNX_RC_ICON "${CMAKE_SOURCE_DIR}/${VYNX_ICON_DIR}/icon.ico")
-add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vynx_qr.rc"
-  COMMAND ${CMAKE_COMMAND} -DVYNX_RC_IN=${CMAKE_SOURCE_DIR}/app/resources/vynx_qr.rc.in
-          -DVYNX_RC_OUT=${CMAKE_CURRENT_BINARY_DIR}/vynx_qr.rc
-          -DVYNX_RC_ICON=${VYNX_RC_ICON}
-          -DVYNX_RC_ARCH=${VYNX_RC_ARCH}
-          -DVYNX_RC_VERSION=${PROJECT_VERSION}
-          -P ${CMAKE_SOURCE_DIR}/cmake/ConfigureResource.cmake
-  DEPENDS "${CMAKE_SOURCE_DIR}/app/resources/vynx_qr.rc.in"
-          "${CMAKE_SOURCE_DIR}/cmake/ConfigureResource.cmake"
-          "${VYNX_RC_ICON}"
-  COMMENT "Configuring the Windows resource script"
-  VERBATIM
-)
-target_sources(VYNX_QR PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/vynx_qr.rc")
-
-# The executable is called "VYNX QR.exe", which is what Windows Search shows and
-# what the installer registers. The target itself keeps an identifier CMake can
-# safely reference.
-set_target_properties(VYNX_QR PROPERTIES OUTPUT_NAME "VYNX QR")
-
-# What goes into the installer: the executable and the Qt runtime that sits next
-# to it. The runtime is deployed by the POST_BUILD step above, so it is installed
-# from the same directory rather than copied twice.
-install(TARGETS VYNX_QR RUNTIME DESTINATION ".")
-install(DIRECTORY "$<TARGET_FILE_DIR:VYNX_QR>/"
-  DESTINATION "."
-  USE_SOURCE_PERMISSIONS
-  PATTERN "Qt6*.dll"
-  PATTERN "*.exe"
-  PATTERN "platforms/*.dll"
-  PATTERN "styles/*.dll"
-)
-
-endif() # VYNX_BUILD_APP
-
-# ---------------------------------------------------------------------------
-# Qt runtime deployment
-# ---------------------------------------------------------------------------
-if(VYNX_DEPLOY_QT AND VYNX_BUILD_APP)
-  find_program(WINDEPLOYQT_EXECUTABLE windeployqt
-  HINTS "${Qt6_DIR}/../../../bin" "${Qt6_DIR}/bin"
-)
-  if(NOT WINDEPLOYQT_EXECUTABLE)
-    message(FATAL_ERROR "windeployqt was not found next to the Qt installation")
-  endif()
-  add_custom_command(TARGET VYNX_QR POST_BUILD
-    COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-            --no-translations --no-system-d3d-compiler --no-opengl-sw
-            --no-quick-import --no-compiler-runtime
-            --dir "$<TARGET_FILE_DIR:VYNX_QR>"
-            "$<TARGET_FILE:VYNX_QR>"
-    COMMENT "Copying the Qt runtime next to the executable"
-    VERBATIM
-  )
-
-  # windeployqt copies for the whole of Qt, not for this application, and leaves
-  # roughly 21 MB that this program can never reach. Nothing here loads an image
-  # from disk through Qt, because logos are decoded by the Rust engine and handed
-  # over as raw pixels; nothing reaches the network, because the vector export is
-  # written as text and the clipboard is read through QtGui alone. So the shader
-  # compiler, the network stack, the SVG image plugin and the plugin directories
-  # that belong to them are removed, and the result is verified by the application
-  # still starting.
-  set(VYNX_DEPLOY_UNNEEDED
-    dxcompiler.dll        # DirectX shader compiler, for RHI paths this app never takes
-    dxil.dll
-    Qt6Network.dll        # no sockets are opened by this application
-    Qt6Svg.dll            # the vector export is text, written by the engine
-    imageformats          # images reach Qt as decoded RGBA, never as files
-    tls
-    networkinformation
-    iconengines
-    generic
-  )
-  foreach(item IN LISTS VYNX_DEPLOY_UNNEEDED)
-    add_custom_command(TARGET VYNX_QR POST_BUILD
-      COMMAND "${CMAKE_COMMAND}" -E rm -rf "$<TARGET_FILE_DIR:VYNX_QR>/${item}"
-      COMMENT "Removing ${item}, which this application never loads"
-      VERBATIM
-    )
-  endforeach()
+target_sources(VYNX_QR PRIVATE app/resources/icons.qrc)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -343,8 +264,7 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
     app/MainWindow.h
     app/Theme.cpp
     app/Theme.h
-    app/WindowsIntegration.cpp
-    app/WindowsIntegration.h
+    ${VYNX_PLATFORM_SOURCES}
     app/widgets/Bridge.cpp
     app/widgets/Bridge.h
     app/widgets/ClipboardSuggestion.cpp
@@ -392,6 +312,7 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   # Qt6_DIR is <prefix>/lib/cmake/Qt6, so the DLLs are three levels up. The path is
   # checked here rather than discovered at test time, because a wrong one shows up
   # as a bare 0xc0000135 with nothing to explain it.
+  if(WIN32)
   get_filename_component(VYNX_QT_BIN "${Qt6_DIR}/../../../bin" ABSOLUTE)
   if(NOT EXISTS "${VYNX_QT_BIN}")
     message(FATAL_ERROR "Qt DLL directory not found at ${VYNX_QT_BIN}")
@@ -401,6 +322,7 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   set_tests_properties(window PROPERTIES
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${VYNX_QT_BIN}"
   )
+  endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -411,6 +333,7 @@ endif()
 # This is the usual set for an MSVC consumer of rustc output. It is declared here
 # rather than next to the application because both the window and the bridge test
 # link it, and the test exists in configurations where the window does not.
+if(WIN32)
 set(VYNX_RUST_SYSTEM_LIBS
   ws2_32      # sockets, used by std::net
   ntdll       # native file operations
@@ -424,6 +347,10 @@ set(VYNX_RUST_SYSTEM_LIBS
   uuid        # COM interface identifiers
   dwmapi      # window chrome, used by the native integration
 )
+else()
+  find_package(Threads REQUIRED)
+  set(VYNX_RUST_SYSTEM_LIBS Threads::Threads ${CMAKE_DL_LIBS} m)
+endif()
 
 if(VYNX_BUILD_APP)
   target_link_libraries(VYNX_QR PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
@@ -435,69 +362,6 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   target_link_libraries(vynx_window_test PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
 endif()
 
-# ---------------------------------------------------------------------------
-# Installer
-# ---------------------------------------------------------------------------
-# Written by hand rather than generated by CPack, for two reasons that both show
-# up immediately when it is used here: the Start Menu shortcut is generated from
-# the CMake target name, so it points at "VYNX_QR.exe" rather than at
-# "VYNX QR.exe", and CPack's generator still asks for an administrator, which is
-# wrong for a per-user utility. This script is per-user, names the executable
-# correctly, and registers an Apps and Features entry.
-
-if(VYNX_BUILD_APP)
-set(VYNX_PAYLOAD_DIR "${CMAKE_BINARY_DIR}/bin")
-set(VYNX_PACKAGE_DIR "${CMAKE_BINARY_DIR}/package")
-file(MAKE_DIRECTORY "${VYNX_PACKAGE_DIR}")
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-add_custom_target(license_payload
-  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/generate-rust-licenses.py"
-          --output "${VYNX_PAYLOAD_DIR}/licenses/rust"
-          --cache "${CMAKE_BINARY_DIR}/license-tools"
-  COMMAND "${CMAKE_COMMAND}" "-DSOURCE=${CMAKE_SOURCE_DIR}"
-          "-DPAYLOAD=${VYNX_PAYLOAD_DIR}" "-DQT_VERSION=${Qt6_VERSION}"
-          -P "${CMAKE_SOURCE_DIR}/cmake/package-licenses.cmake"
-  VERBATIM)
-
-# Point NSIS at the same payload directory the build produced.
-configure_file("${CMAKE_SOURCE_DIR}/installer/vynx_qr.nsi" "${VYNX_PACKAGE_DIR}/vynx_qr.nsi" @ONLY)
-
-find_program(MAKENSIS_EXECUTABLE makensis
-  HINTS "$ENV{LOCALAPPDATA}/tauri/NSIS" "C:/Program Files (x86)/NSIS"
-)
-if(NOT MAKENSIS_EXECUTABLE)
-  # Not fatal: the application and its tests build without an installer.
-  message(STATUS "makensis was not found, so the installer target is unavailable")
-else()
-  add_custom_target(installer
-    COMMAND "${MAKENSIS_EXECUTABLE}" "/DVYNX_VERSION=${PROJECT_VERSION}"
-            "/DVYNX_PAYLOAD_DIR=${VYNX_PAYLOAD_DIR}"
-            "/DVYNX_ICON=${VYNX_RC_ICON}"
-            "/DVYNX_LICENSE=${CMAKE_SOURCE_DIR}/LICENSE"
-            "/XSetCompressor /SOLID lzma"
-            "/XOutFile ${VYNX_PACKAGE_DIR}/VYNX-QR-Setup-x64-${PROJECT_VERSION}.exe"
-            "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
-    DEPENDS VYNX_QR license_payload "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
-    COMMENT "Building the NSIS installer"
-    VERBATIM
-  )
+if(WIN32 AND VYNX_BUILD_APP)
+  include(cmake/windows-packaging.cmake)
 endif()
-
-# ---------------------------------------------------------------------------
-# Portable archive
-# ---------------------------------------------------------------------------
-# The same payload with nothing installed: useful to run from a USB stick, and it
-# costs one archive step rather than a second packaging tool.
-  add_custom_target(portable
-    COMMAND "${CMAKE_COMMAND}" -E tar czf
-            "${VYNX_PACKAGE_DIR}/VYNX-QR-Portable-x64-${PROJECT_VERSION}.zip"
-            --format=zip "VYNX QR.exe" "Qt6Core.dll" "Qt6Gui.dll" "Qt6Widgets.dll"
-            "platforms" "styles" "licenses" "LICENSE" "THIRD_PARTY_LICENSES.md"
-    WORKING_DIRECTORY "${VYNX_PAYLOAD_DIR}"
-    DEPENDS VYNX_QR license_payload
-    COMMENT "Building the portable archive"
-    VERBATIM
-  )
-endif()
-
-include(CPack)

@@ -36,7 +36,7 @@ pub enum ExportFormat {
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub theme: ThemeMode,
-    /// Follow the Windows accent colour instead of the VYNX blue.
+    /// Follow the system accent colour (legacy JSON field retained) instead of the VYNX blue.
     pub use_windows_accent: bool,
     /// Read the clipboard once at start-up and offer it as a suggestion.
     pub clipboard_check: bool,
@@ -75,18 +75,27 @@ impl Settings {
     }
 }
 
-/// Where preferences live: `%APPDATA%\VYNX\QR\settings.json`.
-///
-/// Exposed so a test, or a portable build, can reason about the location without
-/// having to guess at the environment.
+/// Windows uses APPDATA; Linux uses absolute XDG_CONFIG_HOME or HOME/.config.
+/// With no usable home/config location, loading returns defaults and saving fails.
 pub fn default_path() -> Option<PathBuf> {
-    let appdata = std::env::var_os("APPDATA")?;
-    Some(
-        PathBuf::from(appdata)
-            .join("VYNX")
-            .join("QR")
-            .join("settings.json"),
-    )
+    settings_base(|name| std::env::var_os(name))
+        .map(|base| base.join("VYNX").join("QR").join("settings.json"))
+}
+
+// Injecting environment lookup lets path tests run without mutating process state.
+fn settings_base(env: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        env("APPDATA").filter(|p| !p.is_empty()).map(PathBuf::from)
+    }
+    #[cfg(not(windows))]
+    {
+        let absolute = |value: Option<std::ffi::OsString>| {
+            value.map(PathBuf::from).filter(|path| path.is_absolute())
+        };
+        absolute(env("XDG_CONFIG_HOME"))
+            .or_else(|| absolute(env("HOME")).map(|home| home.join(".config")))
+    }
 }
 
 /// Read settings from disk, falling back to defaults when the file is missing or
@@ -117,7 +126,10 @@ pub fn load_from(path: &Path) -> Settings {
 /// Persist settings atomically enough for a desktop utility.
 pub fn save(settings: &Settings) -> AppResult<()> {
     let Some(path) = default_path() else {
-        return Err(err_with(ErrorCode::SettingsFailed, "APPDATA is not set"));
+        return Err(err_with(
+            ErrorCode::SettingsFailed,
+            "No usable user configuration directory is available",
+        ));
     };
     save_to(&path, settings)
 }
@@ -223,14 +235,31 @@ mod tests {
     }
 
     #[test]
-    fn the_default_path_is_the_documented_one() {
-        // Only meaningful where APPDATA exists, which is the platform we ship on.
-        if let Some(path) = default_path() {
-            let text = path.to_string_lossy().replace('/', "\\");
-            assert!(
-                text.ends_with("VYNX\\QR\\settings.json"),
-                "unexpected path: {text}"
-            );
+    #[cfg(windows)]
+    fn windows_preserves_appdata_path() {
+        let base = settings_base(|key| (key == "APPDATA").then(|| "C:/test profile".into()));
+        assert_eq!(base, Some(PathBuf::from("C:/test profile")));
+        assert_eq!(settings_base(|_| None), None);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn linux_prefers_absolute_xdg_and_falls_back_to_home() {
+        let base = settings_base(|key| match key {
+            "XDG_CONFIG_HOME" => Some("/tmp/config space".into()),
+            "HOME" => Some("/home/test".into()),
+            _ => None,
+        });
+        assert_eq!(base, Some(PathBuf::from("/tmp/config space")));
+        for xdg in [None, Some(""), Some("relative/config")] {
+            let base = settings_base(|key| match key {
+                "XDG_CONFIG_HOME" => xdg.map(Into::into),
+                "HOME" => Some("/home/test".into()),
+                _ => None,
+            });
+            assert_eq!(base, Some(PathBuf::from("/home/test/.config")));
         }
+        assert_eq!(settings_base(|_| None), None);
+        assert_eq!(settings_base(|_| Some("relative".into())), None);
     }
 }
