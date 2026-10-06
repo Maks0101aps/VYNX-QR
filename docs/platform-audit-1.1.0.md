@@ -23,3 +23,11 @@ is made for a distro until its actual package and runtime checks pass.
 Local WSL2 cannot start because virtualization is unavailable. Native Linux
 validation uses GitHub runners. A headless compositor does not substitute for
 manual GNOME/KDE Wayland QA. The latter remains a release gate.
+
+DEB smoke run 37458465801 stopped because Openbox advertised its manager
+identity before it exposed `_NET_CLIENT_LIST`. The installer, desktop entry,
+icons, dynamic links and 48-crate/101-notice Linux inventory passed first.
+The smoke now observes the missing-client-list startup state until its original
+deadline while checking that the app stays alive. Other wmctrl errors remain
+fatal. Three independent Xvfb/Openbox startups must all pass; the failed report
+is retained, and the workflow is not retried to manufacture a green result.

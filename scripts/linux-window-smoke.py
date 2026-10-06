@@ -70,7 +70,14 @@ def main():
                         window = None
                         while not window:
                             assert app.poll() is None, f'application exited: {app.returncode}; see {log_path}'
-                            for row in command('wmctrl', '-lp').splitlines():
+                            clients = subprocess.run(['wmctrl', '-lp'], text=True, capture_output=True)
+                            # Openbox exposes its manager identity before creating
+                            # _NET_CLIENT_LIST. No mapped clients is a startup state,
+                            # not a failed application. Other wmctrl errors stay fatal.
+                            if clients.returncode:
+                                assert 'Cannot get client list properties' in clients.stderr, clients.stderr
+                                report['client_list_pending_observations'] = report.get('client_list_pending_observations', 0) + 1
+                            for row in clients.stdout.splitlines():
                                 fields = row.split(None, 4)
                                 if len(fields) == 5 and fields[2] == str(app.pid) and 'VYNX QR' in fields[4]:
                                     window = fields[0]

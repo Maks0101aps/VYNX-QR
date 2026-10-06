@@ -64,8 +64,12 @@ def main():
             content = '{"theme":"dark","defaultSize":512,"clipboardCheck":false}\n'
             preferences.write_text(content)
             env = os.environ | {'XDG_CONFIG_HOME': config}
-            run('xvfb-run', '-a', sys.executable, 'scripts/linux-window-smoke.py', '/usr/bin/vynx-qr',
-                '--config-home', config, '--report', str(args.report.with_suffix('.runtime.json')), env=env)
+            # Three independent display/WM startups stress the initial EWMH
+            # readiness transition; every run must succeed, with no workflow retries.
+            for display in range(3):
+                runtime_report = args.report.with_suffix(f'.runtime-{display}.json')
+                run('xvfb-run', '-a', sys.executable, 'scripts/linux-window-smoke.py', '/usr/bin/vynx-qr',
+                    '--config-home', config, '--report', str(runtime_report), env=env)
             assert preferences.read_text() == content, 'launch overwrote preferences'
             run('sudo', 'apt-get', 'remove', '-y', 'vynx-qr')
             installed = False
