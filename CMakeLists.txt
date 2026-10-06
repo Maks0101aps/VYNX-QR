@@ -330,7 +330,9 @@ if(VYNX_BUILD_TESTS)
     target_compile_options(vynx_bridge_test PRIVATE /W4 /permissive- /utf-8)
   endif()
   add_test(NAME bridge COMMAND vynx_bridge_test)
+endif()
 
+if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   # The window under test needs the application's own sources, so it is built from
   # the same list rather than duplicating it.
   add_executable(vynx_window_test
@@ -429,7 +431,7 @@ endif()
 if(VYNX_BUILD_TESTS)
   target_link_libraries(vynx_bridge_test PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
 endif()
-if(VYNX_BUILD_WINDOW_TESTS)
+if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   target_link_libraries(vynx_window_test PRIVATE ${VYNX_RUST_SYSTEM_LIBS})
 endif()
 
@@ -443,6 +445,7 @@ endif()
 # wrong for a per-user utility. This script is per-user, names the executable
 # correctly, and registers an Apps and Features entry.
 
+if(VYNX_BUILD_APP)
 set(VYNX_PAYLOAD_DIR "${CMAKE_BINARY_DIR}/bin")
 set(VYNX_PACKAGE_DIR "${CMAKE_BINARY_DIR}/package")
 file(MAKE_DIRECTORY "${VYNX_PACKAGE_DIR}")
@@ -476,7 +479,6 @@ endif()
 # ---------------------------------------------------------------------------
 # The same payload with nothing installed: useful to run from a USB stick, and it
 # costs one archive step rather than a second packaging tool.
-if(VYNX_BUILD_APP)
   add_custom_target(portable
     COMMAND "${CMAKE_COMMAND}" -E tar czf
             "${VYNX_PACKAGE_DIR}/VYNX-QR-Portable-x64-${PROJECT_VERSION}.zip"
