@@ -359,7 +359,8 @@ void MainWindow::onSmartInputChanged() {
     // carries a scheme and would be encoded a second time.
     const vynx::SmartPayload smart = vynx::smart_payload(rust::Str(text));
     detected_ = smart.detected;
-    changesInput_ = smart.analysis.changes_input || inputText_ != trimmed;
+    changesInput_ = smart.payload.kind != vynx::PayloadType::Text &&
+        (smart.analysis.changes_input || inputText_ != trimmed);
     detectedPayload_ = smart.payload;
     detectedKind_ = contentKindLabel(smart.analysis.kind);
     normalizationNotice_ = vynxq::toQString(smart.analysis.normalization);
@@ -422,7 +423,7 @@ void MainWindow::showOriginalToggle(bool visible, bool showingOriginal) {
   originalToggle_->setVisible(visible);
   // The label is what tells the user what the button does, so it is set here
   // rather than once at construction where a later state could leave it blank.
-  originalToggle_->setText(showingOriginal ? QStringLiteral("Use detected URL")
+  originalToggle_->setText(showingOriginal ? QStringLiteral("Use detected %1").arg(detectedKind_)
                                           : QStringLiteral("Use original text"));
   chipRow_->setVisible(true);
 }

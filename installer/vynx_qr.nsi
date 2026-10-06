@@ -19,7 +19,7 @@ Unicode true
   !define VYNX_PAYLOAD_DIR "..\\bin"
 !endif
 !ifndef VYNX_ICON
-  !define VYNX_ICON "..\\..\\src-tauri\\icons\\icon.ico"
+  !define VYNX_ICON "..\\..\\app\\resources\\icons\\icon.ico"
 !endif
 !ifndef VYNX_LICENSE
   !define VYNX_LICENSE "..\\..\\LICENSE"

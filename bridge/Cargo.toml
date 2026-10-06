@@ -6,6 +6,7 @@ authors = ["Maks0101aps"]
 license-file = "../LICENSE"
 repository = "https://github.com/Maks0101aps/VYNX-QR"
 edition = "2021"
+publish = false
 rust-version = "1.82"
 
 [lib]

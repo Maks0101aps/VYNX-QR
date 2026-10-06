@@ -9,6 +9,7 @@
 | CMake | 3.24 or newer |
 | Qt | 6.5 or newer, MSVC build |
 | NSIS | only for the installer target |
+| Python | 3.9 or newer, for generating the packaged Rust licence bundle |
 
 CMake drives Cargo. There is no separate Rust build step, and no `.lib` to copy by
 hand.
@@ -42,6 +43,15 @@ cmake --build --preset debug
 
 cmake --build --preset release --target installer portable
 ```
+
+Package targets regenerate `licenses/rust/` from the locked Windows production
+dependency graph using cargo-about 0.9.2. Its official Windows binary is downloaded
+into the build directory and checked against a pinned SHA256; it is not shipped.
+The bundle includes readable HTML, an inventory with exact versions and hashes,
+and original upstream licence/copyright/NOTICE files. Packaging fails on unresolved
+licences or missing notice files. Full Qt Base 6.8.3 source is also downloaded and
+hash-verified for inclusion, so packaging requires network access on the first run
+and currently requires Qt 6.8.3. No licences are maintained as a manual crate table.
 
 ### Why the tests run in release
 

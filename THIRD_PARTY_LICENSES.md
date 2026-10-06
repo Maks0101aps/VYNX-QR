@@ -23,22 +23,21 @@ The package targets enforce the pinned Qt version and source hash.
 
 ## Rust crates
 
-The engine links these crates. Each is permissive.
+The installer and portable archive include the generated bundle under
+`licenses/rust/THIRD_PARTY_RUST_LICENSES.html`. It contains exact crate versions,
+licence expressions, authors, complete licence texts and copyright notices.
+Original upstream LICENSE, NOTICE, COPYING and COPYRIGHT files are also
+preserved unmodified under `licenses/rust/notices/`.
 
-| Crate | Licence |
-| --- | --- |
-| `qrcode` | MIT |
-| `rqrr` | MIT |
-| `image` | MIT / Apache-2.0 |
-| `serde` | MIT OR Apache-2.0 |
-| `serde_json` | MIT OR Apache-2.0 |
-| `thiserror` | MIT OR Apache-2.0 |
-| `base64` | MIT OR Apache-2.0 |
-| `cxx` | Apache-2.0 OR MIT |
-| `cxx-build` | Apache-2.0 OR MIT |
-| `windows` | MIT OR Apache-2.0 |
+`licenses/rust/manifest.json` records the bridge lockfile SHA256, selected
+licences and SHA256 of every original notice file. Packaging regenerates the
+bundle with pinned, hash-verified cargo-about 0.9.2 from `bridge/Cargo.lock`,
+using the default-feature `x86_64-pc-windows-msvc` production dependency graph.
+Build-only and development-only dependencies are excluded. Production procedural
+macro dependencies are retained conservatively; the inventory does not claim
+that every crate contributes machine code after linker optimisation.
 
-The exact versions are in `Cargo.lock`, which records the resolved versions and checksums.
+Licence resolution or a missing upstream notice file causes packaging to fail.
 
 ## Build tooling
 
@@ -48,9 +47,11 @@ Used to build, not shipped:
 | --- | --- |
 | CMake | BSD-3-Clause |
 | NSIS | zlib/libpng, historically used by the NSIS project |
+| cargo-about | MIT OR Apache-2.0 |
 
 ## What is not here
 
 No JavaScript runtime, no browser engine, no web view, no analytics, no crash
-reporting service and no network client. The shipped application consists of one
-executable and three Qt DLLs.
+reporting service and no network client. The executable runtime consists of one
+application process and dynamically linked Qt runtime libraries; no browser
+runtime or network client is shipped.

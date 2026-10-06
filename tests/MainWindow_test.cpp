@@ -160,6 +160,30 @@ private slots:
              "nothing changed, so nothing must be offered");
   }
 
+  void emailOriginalModeReturnsToDetectedEmail() {
+    MainWindow window;
+    present(window);
+    enter(smartInput(window), QStringLiteral("hello@example.com"));
+    QCOMPARE(bridgeString(window.currentResult().encoded), QStringLiteral("mailto:hello@example.com"));
+    auto *toggle = findButton(window, QStringLiteral("Use original text"));
+    QVERIFY(toggle && toggle->isVisible() && toggle->isEnabled());
+    QTest::mouseClick(toggle, Qt::LeftButton);
+    QCOMPARE(bridgeString(window.currentResult().encoded), QStringLiteral("hello@example.com"));
+    toggle = findButton(window, QStringLiteral("Use detected Email"));
+    QVERIFY(toggle && toggle->isVisible() && toggle->isEnabled());
+    QTest::mouseClick(toggle, Qt::LeftButton);
+    QCOMPARE(bridgeString(window.currentResult().encoded), QStringLiteral("mailto:hello@example.com"));
+  }
+
+  void paddedPlainTextHasNoOriginalToggle() {
+    MainWindow window;
+    present(window);
+    enter(smartInput(window), QStringLiteral("  hello  "));
+    QCOMPARE(bridgeString(window.currentResult().encoded), QStringLiteral("  hello  "));
+    auto *toggle = findButton(window, QStringLiteral("Use original text"));
+    QVERIFY(!toggle || !toggle->isVisible());
+  }
+
   /// Switching to a structured form and back must clear the code.
   void leavingTheSmartInputClearsTheCode() {
     MainWindow window;

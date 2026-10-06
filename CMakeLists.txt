@@ -449,7 +449,11 @@ if(VYNX_BUILD_APP)
 set(VYNX_PAYLOAD_DIR "${CMAKE_BINARY_DIR}/bin")
 set(VYNX_PACKAGE_DIR "${CMAKE_BINARY_DIR}/package")
 file(MAKE_DIRECTORY "${VYNX_PACKAGE_DIR}")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_custom_target(license_payload
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/generate-rust-licenses.py"
+          --output "${VYNX_PAYLOAD_DIR}/licenses/rust"
+          --cache "${CMAKE_BINARY_DIR}/license-tools"
   COMMAND "${CMAKE_COMMAND}" "-DSOURCE=${CMAKE_SOURCE_DIR}"
           "-DPAYLOAD=${VYNX_PAYLOAD_DIR}" "-DQT_VERSION=${Qt6_VERSION}"
           -P "${CMAKE_SOURCE_DIR}/cmake/package-licenses.cmake"
