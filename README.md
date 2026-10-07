@@ -12,6 +12,12 @@ telemetry, no network requests, and no history of what you encoded.
 
 ![VYNX QR](app/resources/icons/icon.ico)
 
+![Linux native window](docs/screenshots/linux-x11.png)
+
+Actual Ubuntu 24.04 / Qt 6.4.2 window under Xvfb/Openbox, captured in
+[Actions run 37586370670](https://github.com/Maks0101aps/VYNX-QR/actions/runs/37586370670).
+This is automated X11 evidence; manual GNOME/KDE Wayland validation is pending.
+
 ## Features
 
 - **One input.** The type is worked out automatically: a URL, an email address, a

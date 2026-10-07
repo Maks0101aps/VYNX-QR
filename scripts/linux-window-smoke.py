@@ -52,6 +52,12 @@ def sample(pid, runtime=None):
         # The FUSE daemon normally reparents to PID 1, so child count alone
         # would conceal its existence. Identify it by the pinned image file.
         memory['appimage_mount_helpers'] = mount_helpers(runtime)
+        appdir = (proc / 'exe').resolve().parents[2]
+        qt_paths = sorted({line.split(maxsplit=5)[-1] for line in (proc / 'maps').read_text().splitlines()
+                           if '/libQt6' in line})
+        assert len(qt_paths) >= 3, 'Qt runtime mapping missing'
+        assert all(Path(path).is_relative_to(appdir) for path in qt_paths), f'Qt loaded outside AppImage: {qt_paths}'
+        memory['loaded_qt_libraries'] = qt_paths
     fields = (proc / 'stat').read_text().rsplit(')', 1)[1].split()
     memory['cpu_ticks'] = int(fields[11]) + int(fields[12])
     return memory

@@ -37,5 +37,26 @@ support symbols from the Rust static archive. Its compiler/link commands used
 makepkg's default `-flto=auto` on the CXX-generated objects. PKGBUILD disables
 that additional GCC LTO pass (`!lto`) for this mixed Rust/C++ static-library
 build. Rust's configured release LTO and distro hardening flags remain enabled.
-The diagnosis must be confirmed by a real makepkg, bridge and window test run;
-the original failed build log remains evidence.
+Real makepkg, bridge/window tests and fresh Arch install/run/remove passed in
+run 37461160557. The original failed build log remains evidence.
+
+Arch's initial artifact contained Rust notices, but the clean container's
+`NoExtract = usr/share/doc/*` prevented their installation. Required notices now
+use `/usr/share/licenses/vynx-qr`; run 37461160557 confirmed the setting and the
+installed notice inventory/hashes.
+
+DEB run 37586039614 built one Debian 12 package and tested that exact SHA256 on
+both fresh Debian 12 and Ubuntu 24.04 environments. Both install/GUI/close/remove
+checks passed, including 15 launches per distro and retained user preferences.
+
+AppImage's initial Qt 6.8.3 XCB test failed before packaging. The diagnostic
+follow-up established missing `libxcb-shape.so.0` on the build runner. Adding the
+actual SDK dependencies made the Qt tests pass in run 37586370670. Its next
+failure was deployment of the staged ELF after CMake stripped build RPATH;
+linuxdeploy now resolves the pinned official SDK via an explicit packaging-only
+LD_LIBRARY_PATH. Fresh artifact launch remains the acceptance gate.
+
+The first container job with a spaced working-directory failed in the Actions
+runner's docker invocation (`No such container: tree`), before CMake ran. Sources
+remain in `source tree with spaces`; a quoted shell cd avoids that runner issue
+and keeps the actual spaced-source build check.
