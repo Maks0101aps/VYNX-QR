@@ -63,3 +63,12 @@ No JavaScript runtime, no browser engine, no web view, no analytics, no crash
 reporting service and no network client. The executable runtime consists of one
 application process and dynamically linked Qt runtime libraries; no browser
 runtime or network client is shipped.
+
+
+AppImage additionally contains a Type 2 filesystem runtime and may start its
+FUSE mount helper while the application runs. Full runtime/static dependency
+notices and corresponding libfuse source/build materials are included under
+`licenses/appimage-runtime/`. Its dynamically bundled system and SDK dependency
+notices, hashes and sources are under `licenses/system/`; the application process
+itself creates no worker process. See the packaged Qt README for replacement and
+source-build instructions.

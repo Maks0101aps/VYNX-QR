@@ -20,6 +20,10 @@ and permits reverse engineering to debug modifications to LGPL libraries.
 Non-Qt deployed library notices and provenance are in `licenses/system/`.
 Corresponding source for LGPL system libraries is included there when bundled.
 The GCC runtime-library exception, where applicable, is reproduced in full.
+ICU supplied by the official Qt SDK has its own version probe, upstream licence
+and checksum-verified source archive under `licenses/system/sdk/icu/`.
+Referenced Debian common-licence texts are copied in full, rather than retaining
+paths that only exist on the build machine.
 
 The Type 2 AppImage runtime is pinned to source commit
 `8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa`; its source, libfuse 3.15.0 source,
