@@ -14,8 +14,12 @@ env:
   QT_INSTALL_DIR: "msvc2022_64"
 
 jobs:
+  platform-validation:
+    name: Native Linux builds and artifact tests
+    uses: ./.github/workflows/ci.yml
+
   release:
-    name: Build and publish
+    name: Build Windows release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +38,7 @@ jobs:
         with:
           workspaces: |
             core -> target
-            bridge -> target
+            bridge -> ../build/release/cargo
 
       # No artifact is produced unless every check below passes. A release that
       # does not build is worse than no release, because it is discoverable.
@@ -175,47 +179,87 @@ jobs:
         shell: pwsh
         run: ./scripts/installer-smoke.ps1 -ArtifactDirectory artifacts
 
+      - name: Test downloaded portable archive
+        shell: pwsh
+        run: ./scripts/portable-smoke.ps1 -ArtifactDirectory artifacts
+
       - name: Upload smoke report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: installer-smoke-${{ matrix.runner }}
-          path: installer-smoke-report.json
+          path: |
+            installer-smoke-report.json
+            portable-smoke-report.json
+            portable-runtime-smoke.json
           if-no-files-found: warn
 
-  publish:
-    name: Publish tested release
-    needs: [release, installer-smoke]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+  collect:
+    name: Collect five verified public packages
+    needs: [release, installer-smoke, platform-validation]
+    runs-on: ubuntu-24.04
     steps:
-      - name: Download the tested release artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: vynx-qr-release
-          path: artifacts
+          path: artifacts/vynx-qr-release
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-deb
+          path: artifacts/debian-deb
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-package
+          path: artifacts/arch-package
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: artifacts/linux-appimage
+      - run: python3 scripts/collect-release.py --input artifacts --output public
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vynx-qr-public
+          path: public/*
+          if-no-files-found: error
 
+  publish:
+    name: Publish tested release draft
+    needs: collect
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tag matches the single product version
+        run: test "$GITHUB_REF_NAME" = "v$(python3 scripts/project-version.py)"
+      - uses: actions/download-artifact@v4
+        with:
+          name: vynx-qr-public
+          path: artifacts
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/VYNX-QR-Setup-x64-*.exe
             artifacts/VYNX-QR-Portable-x64-*.zip
+            artifacts/vynx-qr_*_amd64.deb
+            artifacts/vynx-qr-*-x86_64.pkg.tar.zst
+            artifacts/VYNX-QR-*-x86_64.AppImage
             artifacts/SHA256SUMS.txt
           fail_on_unmatched_files: true
           draft: true
           generate_release_notes: true
           body: |
-            ## VYNX QR
+            Native Qt Widgets application with the same Rust QR engine on Windows and Linux.
+            No browser engine, telemetry, account or network client.
 
-            Native Windows build: one process, no web view, no telemetry.
+            Windows: per-user installer or portable ZIP.
+            Linux x86_64: DEB, Arch package or self-contained AppImage.
+            Verify downloads against SHA256SUMS.txt.
 
-            * `VYNX-QR-Setup-x64-*.exe` — per-user installer
-            * `VYNX-QR-Portable-x64-*.zip` — run it from anywhere
-            * `SHA256SUMS.txt` — verify with `sha256sum -c`
+            Qt and Rust notices are included in every package; bundled Qt includes
+            its corresponding source. See THIRD_PARTY_LICENSES.md.
 
-            Qt is dynamically linked under the LGPL; see
-            `THIRD_PARTY_LICENSES.md`.
-
-            Tested on a Windows 11 development machine and clean GitHub Windows runners.
-            Dedicated Windows 10 clean-machine validation pending.
+            Windows installer and portable artifacts are tested on fresh GitHub Windows runners.
+            Linux package artifacts are tested on fresh Debian, Ubuntu and Arch environments.
+            Dedicated Windows 10 consumer-machine validation remains pending.
