@@ -1,6 +1,8 @@
 #include "MainWindow.h"
 
 #include <QApplication>
+#include <QAbstractSpinBox>
+#include <QComboBox>
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QFile>
@@ -10,6 +12,8 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QPlainTextEdit>
+#include <QTextEdit>
 #include <QMenu>
 #include <QPushButton>
 #include <QShortcut>
@@ -297,14 +301,31 @@ void MainWindow::buildPreview(QWidget *pane) {
 }
 
 void MainWindow::wireShortcuts() {
-  // Copy stays a window shortcut only when the focus is not in a text field, so
-  // Ctrl+C inside the input keeps copying text rather than stealing it.
+  // Every focused editor keeps its own copy semantics, including password
+  // echo modes and empty selections. Composite editors can focus a child.
   auto *copyShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+C")), this);
   copyShortcut->setContext(Qt::WindowShortcut);
   connect(copyShortcut, &QShortcut::activated, this, [this] {
-    if (QApplication::focusWidget() == inputField_) {
-      inputField_->copy();
-      return;
+    for (QWidget *focus = QApplication::focusWidget(); focus && focus != this;
+         focus = focus->parentWidget()) {
+      auto *edit = qobject_cast<QLineEdit *>(focus);
+      if (auto *spin = qobject_cast<QAbstractSpinBox *>(focus)) {
+        edit = spin->findChild<QLineEdit *>();
+      } else if (auto *combo = qobject_cast<QComboBox *>(focus)) {
+        edit = combo->lineEdit();
+      }
+      if (edit) {
+        edit->copy();
+        return;
+      }
+      if (auto *plainText = qobject_cast<QPlainTextEdit *>(focus)) {
+        plainText->copy();
+        return;
+      }
+      if (auto *richText = qobject_cast<QTextEdit *>(focus)) {
+        richText->copy();
+        return;
+      }
     }
     onCopy();
   });
