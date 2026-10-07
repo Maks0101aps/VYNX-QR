@@ -8,8 +8,8 @@
 // The tests below set the field's text rather than synthesising key events. Both
 // reach the window through the same `textChanged` signal, and the debounce, the
 // generation counter and the render path are identical either way. Real key events
-// are covered once, by typingUpdatesTheCodeWithoutEnter, which is enough to prove
-// the input path is wired up: in a session without foreground permission only the
+// are covered by typingUpdatesTheCodeWithoutEnter and the copy-shortcut check.
+// Other logic tests avoid depending on foreground permission: only the
 // first window created in a process accepts synthetic keystrokes, so making every
 // test depend on that would test the environment rather than the code.
 //
@@ -17,6 +17,7 @@
 // the real clipboard, clearing the test image after the export check.
 
 #include <QApplication>
+#include <QAbstractSpinBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QFile>
@@ -28,6 +29,8 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QLineEdit>
+#include <QPlainTextEdit>
+#include <QShortcut>
 #include <QPushButton>
 #include <QTest>
 
@@ -71,6 +74,86 @@ private slots:
   void cleanupTestCase() {
     if (originalAppData_.isNull()) qunsetenv("APPDATA"); else qputenv("APPDATA", originalAppData_);
     if (originalXdg_.isNull()) qunsetenv("XDG_CONFIG_HOME"); else qputenv("XDG_CONFIG_HOME", originalXdg_);
+  }
+
+  void copyShortcutPreservesEveryVisibleEditor() {
+    MainWindow window;
+    present(window);
+    const auto shortcuts = window.findChildren<QShortcut *>();
+    QShortcut *copy = nullptr;
+    for (auto *shortcut : shortcuts) {
+      if (shortcut->key() == QKeySequence(QStringLiteral("Ctrl+C"))) copy = shortcut;
+    }
+    QVERIFY(copy);
+    enter(smartInput(window), QStringLiteral("github.com"));
+    window.onCustomizeToggled();
+    int lineEdits = 0;
+    int multilineEdits = 0;
+    // Include smart input/HEX, all structured forms and spin-box child editors.
+    const auto kinds = {vynx::PayloadType::Text, vynx::PayloadType::Wifi,
+                        vynx::PayloadType::VCard, vynx::PayloadType::Email,
+                        vynx::PayloadType::Phone, vynx::PayloadType::Sms,
+                        vynx::PayloadType::Geo};
+    for (const auto kind : kinds) {
+      if (kind != vynx::PayloadType::Text) window.setSpecialKind(kind);
+      for (auto *edit : window.findChildren<QLineEdit *>()) {
+        if (!edit->isVisible() || !edit->isEnabled()) continue;
+        if (edit->text().isEmpty()) edit->setText(QStringLiteral("copy sample"));
+        edit->setFocus();
+        QVERIFY(QApplication::focusWidget() == edit ||
+                qobject_cast<QAbstractSpinBox *>(QApplication::focusWidget()) == edit->parentWidget());
+        edit->selectAll();
+        const auto selected = edit->selectedText();
+        QVERIFY(!selected.isEmpty());
+        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
+        QTest::keyClick(edit, Qt::Key_C, Qt::ControlModifier);
+        QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
+                     ? selected : QStringLiteral("sentinel"));
+        // Invoke the window fallback too: native ShortcutOverride can otherwise
+        // hide a regression in this handler on some Qt/platform combinations.
+        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+        QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
+                     ? selected : QStringLiteral("sentinel"));
+        if (edit->echoMode() == QLineEdit::Password) {
+          edit->setEchoMode(QLineEdit::Normal);
+          QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+          QCOMPARE(QApplication::clipboard()->text(), selected);
+          edit->setEchoMode(QLineEdit::Password);
+        }
+        edit->deselect();
+        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
+        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
+        ++lineEdits;
+      }
+      for (auto *edit : window.findChildren<QPlainTextEdit *>()) {
+        if (!edit->isVisible()) continue;
+        edit->setPlainText(QStringLiteral("selected multiline\ntext"));
+        edit->setFocus();
+        QCOMPARE(QApplication::focusWidget(), edit);
+        edit->selectAll();
+        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
+        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+        QCOMPARE(QApplication::clipboard()->text(), edit->toPlainText());
+        auto cursor = edit->textCursor();
+        cursor.clearSelection();
+        edit->setTextCursor(cursor);
+        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
+        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
+        ++multilineEdits;
+      }
+    }
+    QVERIFY(lineEdits >= 20);
+    QCOMPARE(multilineEdits, 3);
+    window.onBackToSmart();
+    enter(smartInput(window), QStringLiteral("github.com"));
+    window.copy_->setFocus();
+    QCOMPARE(QApplication::focusWidget(), window.copy_);
+    QApplication::clipboard()->clear();
+    QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+    QVERIFY(!QApplication::clipboard()->image().isNull());
+    QApplication::clipboard()->clear();
   }
 
   /// The bug that started all this: the code must appear as text is entered, with
