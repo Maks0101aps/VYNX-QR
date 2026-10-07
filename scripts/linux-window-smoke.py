@@ -83,10 +83,16 @@ def main():
         assert 'Usage:' in command(executable, '--help')
         report['version'] = version
         wm = subprocess.Popen(['openbox'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # Wait for the window manager's readiness property, not an arbitrary delay.
+        # Openbox publishes its manager identity before its client list. Wait
+        # for both before mapping the application into the new display.
         deadline = time.monotonic() + 10
-        while subprocess.run(['wmctrl', '-m'], capture_output=True).returncode:
-            assert time.monotonic() < deadline, 'window manager did not become ready'
+        while True:
+            assert wm.poll() is None, 'window manager exited during startup'
+            manager = subprocess.run(['wmctrl', '-m'], text=True, capture_output=True)
+            clients = subprocess.run(['wmctrl', '-lp'], text=True, capture_output=True)
+            if manager.returncode == 0 and clients.returncode == 0:
+                break
+            assert time.monotonic() < deadline, 'window manager/client list did not become ready'
             time.sleep(.1)
         config_context = (nullcontext(str(args.config_home.resolve())) if args.config_home
                           else tempfile.TemporaryDirectory(prefix='vynx smoke '))
@@ -114,7 +120,17 @@ def main():
                                 if len(fields) == 5 and fields[2] == str(app.pid) and 'VYNX QR' in fields[4]:
                                     window = fields[0]
                                     break
-                            assert time.monotonic() < deadline, 'no application window'
+                            if time.monotonic() >= deadline:
+                                report['window_timeout_diagnostics'] = {
+                                    'app_pid': app.pid,
+                                    'wm_pid': wm.pid,
+                                    'wm_exit_code': wm.poll(),
+                                    'clients_stdout': clients.stdout,
+                                    'clients_stderr': clients.stderr,
+                                    'app_status': (Path('/proc') / str(app.pid) / 'status').read_text(),
+                                    'app_wait_channel': (Path('/proc') / str(app.pid) / 'wchan').read_text(),
+                                }
+                                raise AssertionError('no application window')
                             if not window:
                                 time.sleep(.05)
                         elapsed = (time.monotonic() - started) * 1000
