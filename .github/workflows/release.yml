@@ -6,7 +6,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   QT_VERSION: "6.8.3"
@@ -228,6 +228,8 @@ jobs:
 
   publish:
     name: Publish tested release draft
+    permissions:
+      contents: write
     needs: collect
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04

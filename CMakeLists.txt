@@ -13,6 +13,10 @@ project(VYNX_QR
   LANGUAGES CXX
 )
 
+if(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  message(FATAL_ERROR "VYNX QR ${PROJECT_VERSION} supports Windows and Linux only")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -160,7 +164,7 @@ message(STATUS "Bridge header: ${VYNX_BRIDGE_HEADER}")
 if(WIN32)
   set(VYNX_BRIDGE_LIB "${VYNX_CARGO_PROFILE_DIR}/vynx_qr_bridge.lib")
   set(VYNX_PLATFORM_BACKEND app/platform/windows/WindowsIntegration.cpp)
-else()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(VYNX_BRIDGE_LIB "${VYNX_CARGO_PROFILE_DIR}/libvynx_qr_bridge.a")
   set(VYNX_PLATFORM_BACKEND app/platform/linux/LinuxIntegration.cpp)
 endif()
