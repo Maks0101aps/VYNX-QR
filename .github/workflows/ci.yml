@@ -300,9 +300,6 @@ jobs:
     name: Debian 12 native build and DEB
     runs-on: ubuntu-24.04
     container: rust:1.90-bookworm
-    defaults:
-      run:
-        working-directory: source tree with spaces
     steps:
       - name: Install native Debian dependencies
         working-directory: /
@@ -314,6 +311,7 @@ jobs:
           path: source tree with spaces
       - name: Build, test and package with Debian system Qt
         run: |
+          cd "source tree with spaces"
           cmake --preset linux-release
           cmake --build --preset linux-release
           xvfb-run -a ctest --preset linux-release

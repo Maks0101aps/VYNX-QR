@@ -15,6 +15,22 @@ def command(*args):
     return subprocess.check_output(args, text=True).strip()
 
 
+def mount_helpers(runtime):
+    helpers = []
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdecimal():
+            continue
+        try:
+            if (proc / 'exe').resolve() == runtime:
+                status = (proc / 'status').read_text()
+                rss = next(line for line in status.splitlines() if line.startswith('VmRSS:'))
+                helpers.append({'pid': int(proc.name), 'executable': str(runtime),
+                                'VmRSS_KiB': int(rss.split()[1])})
+        except (FileNotFoundError, PermissionError, ProcessLookupError, StopIteration):
+            continue
+    return helpers
+
+
 def sample(pid, runtime=None):
     proc = Path('/proc') / str(pid)
     status = dict(line.split(':', 1) for line in (proc / 'status').read_text().splitlines())
@@ -33,7 +49,9 @@ def sample(pid, runtime=None):
         helpers.append({'pid': int(child), 'executable': str(executable)})
     memory['children'] = len(children)
     if runtime:
-        memory['appimage_mount_helpers'] = helpers
+        # The FUSE daemon normally reparents to PID 1, so child count alone
+        # would conceal its existence. Identify it by the pinned image file.
+        memory['appimage_mount_helpers'] = mount_helpers(runtime)
     fields = (proc / 'stat').read_text().rsplit(')', 1)[1].split()
     memory['cpu_ticks'] = int(fields[11]) + int(fields[12])
     return memory
@@ -111,6 +129,12 @@ def main():
                         # A window-manager close exercises the normal Qt close path.
                         subprocess.run(['wmctrl', '-ic', window], check=True)
                         assert app.wait(timeout=10) == 0, 'application did not close cleanly'
+                        if args.appimage:
+                            deadline = time.monotonic() + 10
+                            while mount_helpers(Path(executable)):
+                                assert time.monotonic() < deadline, 'AppImage mount helper survived close'
+                                time.sleep(.05)
+                            report['mount_helpers_removed_after_close'] = True
                         report['settings_path'] = str(Path(config) / 'VYNX/QR/settings.json')
                     finally:
                         if app.poll() is None:
