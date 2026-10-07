@@ -15,7 +15,7 @@ def command(*args):
     return subprocess.check_output(args, text=True).strip()
 
 
-def sample(pid):
+def sample(pid, runtime=None):
     proc = Path('/proc') / str(pid)
     status = dict(line.split(':', 1) for line in (proc / 'status').read_text().splitlines())
     memory = {}
@@ -26,8 +26,14 @@ def sample(pid):
             if line.startswith('Pss:'):
                 memory['Pss_KiB'] = int(line.split()[1])
     children = (proc / 'task' / str(pid) / 'children').read_text().split()
-    assert not children, f'application has child processes: {children}'
+    helpers = []
+    for child in children:
+        executable = (Path('/proc') / child / 'exe').resolve()
+        assert runtime and executable == runtime, f'application has unexpected child {child}: {executable}'
+        helpers.append({'pid': int(child), 'executable': str(executable)})
     memory['children'] = len(children)
+    if runtime:
+        memory['appimage_mount_helpers'] = helpers
     fields = (proc / 'stat').read_text().rsplit(')', 1)[1].split()
     memory['cpu_ticks'] = int(fields[11]) + int(fields[12])
     return memory
@@ -39,6 +45,7 @@ def main():
     parser.add_argument('--report', required=True)
     parser.add_argument('--runs', type=int, default=5)
     parser.add_argument('--config-home', type=Path)
+    parser.add_argument('--appimage', action='store_true', help='Record the AppImage runtime mount helper separately')
     args = parser.parse_args()
     report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,10 +93,10 @@ def main():
                             if not window:
                                 time.sleep(.05)
                         elapsed = (time.monotonic() - started) * 1000
-                        before = sample(app.pid)
+                        before = sample(app.pid, Path(executable) if args.appimage else None)
                         idle_started = time.monotonic()
                         time.sleep(1)
-                        after = sample(app.pid)
+                        after = sample(app.pid, Path(executable) if args.appimage else None)
                         after['idle_cpu_percent'] = 100 * (after['cpu_ticks'] - before['cpu_ticks']) / os.sysconf('SC_CLK_TCK') / (time.monotonic() - idle_started)
                         after['startup_ms'] = elapsed
                         report['samples'].append(after)

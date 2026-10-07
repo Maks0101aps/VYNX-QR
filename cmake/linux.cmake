@@ -12,6 +12,14 @@ add_custom_target(license_payload
           --cache "${CMAKE_BINARY_DIR}/license-tools"
   VERBATIM)
 
+# Official Qt prefix is only needed for the self-contained AppImage target.
+get_filename_component(VYNX_QT_PREFIX "${Qt6_DIR}/../../.." ABSOLUTE)
+add_custom_target(appimage
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/build-appimage.py"
+          --binary-dir "${CMAKE_BINARY_DIR}" --qt-prefix "${VYNX_QT_PREFIX}"
+  DEPENDS VYNX_QR license_payload
+  VERBATIM)
+
 # Install an explicit inventory, never the build directory or Rust target tree.
 install(TARGETS VYNX_QR RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(FILES "${CMAKE_SOURCE_DIR}/packaging/linux/vynx-qr.desktop"

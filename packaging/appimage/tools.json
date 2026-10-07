@@ -1,0 +1,42 @@
+{
+  "linuxdeploy-x86_64.AppImage": {
+    "url": "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage",
+    "sha256": "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
+  },
+  "linuxdeploy-plugin-qt-x86_64.AppImage": {
+    "url": "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage",
+    "sha256": "15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724"
+  },
+  "runtime-x86_64": {
+    "url": "https://api.github.com/repos/AppImage/type2-runtime/releases/assets/596078161",
+    "sha256": "156f4bdbde9c52d01814600013e0a273f0118dc2de98975f3c8c63427ec79074"
+  },
+  "runtime-source.tar.gz": {
+    "url": "https://codeload.github.com/AppImage/type2-runtime/tar.gz/8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa",
+    "sha256": "c449eb42c2190820872631f5e22f8e15b1e985a36dc4a9e2de3585bb7536c785"
+  },
+  "fuse-3.15.0.tar.xz": {
+    "url": "https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz",
+    "sha256": "70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0"
+  },
+  "squashfuse-0.5.2.tar.gz": {
+    "url": "https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz",
+    "sha256": "db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3"
+  },
+  "musl-COPYRIGHT": {
+    "url": "https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT?h=v1.2.5",
+    "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af"
+  },
+  "zstd-LICENSE": {
+    "url": "https://raw.githubusercontent.com/facebook/zstd/v1.5.6/LICENSE",
+    "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+  },
+  "zstd-COPYING": {
+    "url": "https://raw.githubusercontent.com/facebook/zstd/v1.5.6/COPYING",
+    "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505"
+  },
+  "zlib-LICENSE": {
+    "url": "https://raw.githubusercontent.com/madler/zlib/v1.3.1/LICENSE",
+    "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"
+  }
+}

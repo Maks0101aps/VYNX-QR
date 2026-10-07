@@ -65,6 +65,15 @@
         "VYNX_BUILD_WINDOW_TESTS": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
+    },
+    {
+      "name": "linux-appimage",
+      "inherits": "linux-release",
+      "binaryDir": "${sourceDir}/build/appimage",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "CMAKE_INSTALL_PREFIX": "/usr"
+      }
     }
   ],
   "buildPresets": [
@@ -94,6 +103,10 @@
     {
       "name": "linux-debug",
       "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-appimage",
+      "configurePreset": "linux-appimage"
     }
   ],
   "testPresets": [
@@ -132,6 +145,16 @@
     {
       "name": "linux-debug",
       "configurePreset": "linux-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "linux-appimage",
+      "configurePreset": "linux-appimage",
       "output": {
         "outputOnFailure": true
       },
