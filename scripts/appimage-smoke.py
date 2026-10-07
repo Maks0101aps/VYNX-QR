@@ -62,8 +62,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix='vynx AppImage config ') as config:
             settings = Path(config) / 'VYNX/QR/settings.json'
             settings.parent.mkdir(parents=True)
-            seed = {'theme': 'Dark', 'foreground_color': '#123456', 'background_color': '#FEDCBA',
-                    'use_windows_accent': False}
+            seed = {'theme': 'dark', 'defaultSize': 512, 'clipboardCheck': False}
             settings.write_text(json.dumps(seed))
             gui_report = args.report.with_suffix('.runtime.json')
             run('xvfb-run', '-a', sys.executable, 'scripts/linux-window-smoke.py', str(image),

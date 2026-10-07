@@ -1,13 +1,14 @@
 name: CI
 
 on:
+  workflow_call:
   push:
     branches: [main, CI-fix, 1.1.0-update]
   pull_request:
     branches: [main]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -272,13 +273,13 @@ jobs:
 
   deb-smoke:
     name: DEB from Actions install/run/remove
-    needs: ubuntu
+    needs: debian
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: ubuntu-deb
+          name: debian-deb
           path: artifacts
       - name: Install test infrastructure
         run: |
@@ -294,6 +295,66 @@ jobs:
           path: build/deb-smoke/
           if-no-files-found: warn
 
+  debian:
+    name: Debian 12 native build and DEB
+    runs-on: ubuntu-24.04
+    container: rust:1.90-bookworm
+    steps:
+      - name: Install native Debian dependencies
+        run: |
+          apt-get update
+          apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland python3 xvfb xauth dpkg-dev desktop-file-utils
+      - uses: actions/checkout@v4
+      - name: Build, test and package with Debian system Qt
+        run: |
+          cmake --preset linux-release
+          cmake --build --preset linux-release
+          xvfb-run -a ctest --preset linux-release
+          cmake --build --preset linux-release --target deb
+          cd build/linux-release/package
+          sha256sum *.deb > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-deb
+          path: |
+            build/linux-release/package/*.deb
+            build/linux-release/package/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debian-build-evidence
+          path: build/linux-release/Testing/Temporary/
+          if-no-files-found: warn
+
+  debian-smoke:
+    name: Debian 12 artifact install/run/remove
+    needs: debian
+    runs-on: ubuntu-24.04
+    container: debian:12
+    steps:
+      - name: Install runtime test infrastructure
+        run: |
+          apt-get update
+          apt-get install -y python3 git sudo xvfb xauth openbox wmctrl desktop-file-utils
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/vynx-smoke
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-deb
+          path: artifacts
+      - name: Install, run and remove the actual artifact as an ordinary user
+        run: |
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- python3 scripts/linux-package-smoke.py artifacts/*.deb --manifest artifacts/SHA256SUMS.txt --report build/debian-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debian-smoke-evidence
+          path: build/debian-smoke/
+          if-no-files-found: warn
+
   appimage:
     name: AppImage with official Qt
     runs-on: ubuntu-24.04
@@ -303,7 +364,7 @@ jobs:
         run: |
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
-          sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 xvfb xauth desktop-file-utils dpkg-dev
+          sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 xvfb xauth desktop-file-utils dpkg-dev
       - name: Install official Qt SDK
         run: |
           python3 -m pip install 'aqtinstall==3.3.0'
@@ -316,7 +377,9 @@ jobs:
         run: |
           cmake --preset linux-appimage
           cmake --build --preset linux-appimage
-          xvfb-run -a ctest --preset linux-appimage
+          ldd "$QTDIR/plugins/platforms/libqxcb.so" | tee build/appimage/xcb-dependencies.txt
+          ! grep -q "not found" build/appimage/xcb-dependencies.txt
+          QT_DEBUG_PLUGINS=1 xvfb-run -a ctest --preset linux-appimage
       - name: Package AppImage and notices
         run: |
           cmake --build --preset linux-appimage --target appimage
@@ -335,6 +398,7 @@ jobs:
           name: appimage-build-evidence
           path: |
             build/appimage/appimage-inventory.json
+            build/appimage/xcb-dependencies.txt
             build/appimage/Testing/Temporary/
           if-no-files-found: warn
 
