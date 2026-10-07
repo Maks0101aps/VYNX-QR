@@ -185,7 +185,13 @@ def main():
                         'LDAI_OUTPUT': str(build / 'package' / f'VYNX-QR-{version}-x86_64.AppImage'),
                         'LDAI_VERSION': version, 'LDAI_NO_APPSTREAM': '1'}
     deploy = str(tools['linuxdeploy-x86_64.AppImage'])
-    run(deploy, '--appdir', str(appdir), '--plugin', 'qt', cwd=tools_dir, env=env)
+    # linuxdeploy's compatibility blacklist omits GLVND's OpenGL entry point,
+    # but a fresh runner lacks it. Ship the generic dispatch libraries (not GPU
+    # drivers) and include their distro notices in the same provenance audit.
+    dispatch = [Path('/usr/lib/x86_64-linux-gnu') / name for name in ('libOpenGL.so.0', 'libGLdispatch.so.0')]
+    assert all(p.is_file() for p in dispatch), 'GLVND build dependency missing'
+    explicit = [argument for path in dispatch for argument in ('--library', str(path))]
+    run(deploy, '--appdir', str(appdir), *explicit, '--plugin', 'qt', cwd=tools_dir, env=env)
     assert (appdir / 'usr/plugins/platforms/libqxcb.so').is_file()
     assert list((appdir / 'usr/plugins/platforms').glob('libqwayland*.so'))
     system_notices(appdir, tools_dir, qt)
