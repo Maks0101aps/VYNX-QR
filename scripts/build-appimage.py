@@ -152,6 +152,9 @@ def main():
     wayland_plugins = sorted(p.name for p in plugin_dir.glob('libqwayland*.so'))
     assert wayland_plugins, 'official Qt SDK has no Wayland platform plugin'
     env = os.environ | {'APPIMAGE_EXTRACT_AND_RUN': '1', 'QMAKE': str(qmake),
+                        # CMake strips build RPATH during installation. Resolve
+                        # the official SDK while deploying the installed ELF.
+                        'LD_LIBRARY_PATH': str(qt / 'lib') + (':' + os.environ['LD_LIBRARY_PATH'] if os.environ.get('LD_LIBRARY_PATH') else ''),
                         'EXTRA_PLATFORM_PLUGINS': ';'.join(wayland_plugins),
                         # This deployer copies client integration directories;
                         # the audit rejects an actual compositor library.
