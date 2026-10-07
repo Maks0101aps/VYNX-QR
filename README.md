@@ -98,8 +98,9 @@ Verify `SHA256SUMS.txt` before installing. DEB and Arch use distro Qt; AppImage
 bundles Qt and requires a working FUSE environment. Launch `vynx-qr` or the
 application-menu entry. Remove with `sudo apt remove vynx-qr`,
 `sudo pacman -R vynx-qr`, or delete the AppImage file. Preferences remain in the
-XDG directory. Runtime never requires root. Linux package verification is still
-in progress; only tested distro versions will be listed as supported.
+XDG directory. Runtime never requires root. Automated artifact checks pass on Debian 12, Ubuntu 24.04 and Arch Linux
+(rolling snapshot). AppImage FUSE launch is tested on Ubuntu 24.04. Real
+GNOME/KDE Wayland desktop QA is pending; other distro versions are unverified.
 No ARM64 or macOS package is provided.
 
 ## Keyboard

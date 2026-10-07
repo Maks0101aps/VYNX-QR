@@ -60,3 +60,25 @@ The first container job with a spaced working-directory failed in the Actions
 runner's docker invocation (`No such container: tree`), before CMake ran. Sources
 remain in `source tree with spaces`; a quoted shell cd avoids that runner issue
 and keeps the actual spaced-source build check.
+
+
+AppImage's source/provenance audit found ICU 73 from the official Qt SDK rather
+than Ubuntu's ICU package. The packaging step probes its exact 73.2 version and
+retains upstream notices and the pinned source archive. The initial fresh launch
+then found blacklisted GLVND entry points absent from the runner (`libOpenGL.so.0`,
+then `libEGL.so.1`). The artifact now includes the generic GLVND dispatch set and
+its original distro notices. No Qt package was added to the smoke runner to hide
+those failures. Normal FUSE launch passed in CI run 37588399498 and the manual
+Release run's AppImage smoke; all five closes also removed the mount daemon.
+
+
+Manual Release run 37588424283 passed both Windows installer install/run/uninstall
+checks, but both portable jobs rejected the Rust bundle's source-lock hash. The
+repository lockfiles contained an unused local `vswhom-sys` patch record; unlocked
+Cargo checks in the Windows packaging job removed that record. Removing exactly
+that stale suffix from the source bridge lockfile reproduces the bundle hash
+`fa191c68307b9a5f485e632cb5ebcf4d377c1866c18638b0ea52cf6f0b116aff`.
+No production crate version or checksum changed. Both tracked lockfiles now omit
+the unused build-machine patch marker, Cargo checks use --locked, and release
+packaging rejects any remaining lockfile diff. Portable source-hash verification
+is retained unchanged; failed installer-job reports and logs remain available.

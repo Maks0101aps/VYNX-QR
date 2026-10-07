@@ -61,5 +61,39 @@ long-running CPU benchmark or a controlled comparison between distros.
 The first Debian launch was 377.94 ms; later launches had warm caches. This is
 not a consumer cold boot measurement. All observed application RSS values are
 below the preferred 100 MB Linux budget without comparing RSS to Windows private
-bytes. AppImage needs its own measurements and a separate count for any FUSE
-mount helper; native package numbers cannot stand in for it.
+bytes. AppImage measurements are recorded separately below; native package numbers
+cannot stand in for its runtime.
+
+
+## AppImage FUSE artifact observation
+
+Manual-dispatch [Release run 37588424283](https://github.com/Maks0101aps/VYNX-QR/actions/runs/37588424283)
+at `022396639dc6184cfc6de0857abf336aa4075e29` downloaded and launched the actual
+AppImage on a fresh Ubuntu 24.04 runner without installing Qt. The AppImage smoke
+job passed; the overall Release workflow's status must be checked separately.
+Artifact size: 141,195,768 bytes. SHA256:
+`88970a0be728eac42ecd13dadc0c513c9766d5c551e583a1c63a546d1b126704`.
+
+Five normal FUSE launches created a real X11 window, loaded all observed Qt
+libraries from the mounted bundle, exited with status zero on normal close,
+preserved XDG settings and removed their mount helper after close. No extraction
+fallback was used. XCB and Wayland plugins and dependency notice/source hashes
+were checked in the downloaded image; this is not a Wayland desktop test.
+
+| Metric | Observation |
+| --- | --- |
+| QR application RSS | 40,828-41,000 KiB |
+| QR application PSS | 33,680-33,812 KiB |
+| QR application idle CPU | Zero ticks in all five one-second observations |
+| First observed startup | 320.53 ms; not a consumer cold boot |
+| Four subsequent launches | 214.05-216.82 ms; median 214.59 ms |
+| QR application children | Zero |
+| Separate FUSE mount helper | One while running; RSS 20,892-21,284 KiB |
+| Close cleanup | Application and mount helper both gone |
+
+AppImage therefore has two OS processes during normal mounted execution: one QR
+application and one packaging filesystem helper. DEB, Arch and Windows do not
+have that helper. Helper CPU/PSS were not independently sampled, and summed RSS
+is not unique-memory accounting. The archive is larger chiefly because it keeps
+corresponding Qt/system/runtime sources and full dependency notices. No browser
+engine, telemetry or application worker process is introduced.
