@@ -47,18 +47,18 @@ jobs:
         run: |
           cargo fmt --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --locked --all-targets --all-features -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo test
+          cargo test --locked
 
       - name: Check the bridge
         working-directory: bridge
         run: |
           cargo fmt --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --locked --all-targets --all-features -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo test
+          cargo test --locked
 
       - name: Install Qt
         run: |
@@ -105,7 +105,10 @@ jobs:
         run: ctest --preset release --output-on-failure
 
       - name: Package
-        run: cmake --build --preset release --target installer portable
+        run: |
+          git diff --exit-code -- core/Cargo.lock bridge/Cargo.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset release --target installer portable
 
       - name: Checksums
         shell: pwsh
