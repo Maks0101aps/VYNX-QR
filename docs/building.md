@@ -1,6 +1,6 @@
 # Build and packaging
 
-## Prerequisites
+## Windows prerequisites
 
 | | |
 | --- | --- |
@@ -119,3 +119,90 @@ The icon set itself lives in `app/resources/icons/` and is checked in, so a
 normal build needs nothing but the toolchain above. It can be regenerated with
 `node scripts/generate-icons.mjs`, which is the one place Node is still useful
 and is entirely optional.
+
+## Linux native builds
+
+Build natively on Linux x86_64 with CMake >=3.24, Ninja, GCC, Python >=3.9,
+Rust stable and Qt >=6.4 Core/Gui/Widgets/Test. The locked graph needs a newer
+compiler than the crate's historic rust-version metadata; Debian CI uses Rust
+1.90, rather than Debian 12's older packaged compiler. Windows Qt packaging and
+AppImage use the official Qt 6.8.3 SDK. No cross-compilation is performed.
+
+On Debian 12 or Ubuntu 24.04:
+
+```bash
+sudo apt update
+sudo apt install cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland python3 xvfb xauth dpkg-dev
+cmake --preset linux-release
+cmake --build --preset linux-release
+xvfb-run -a ctest --preset linux-release
+cmake --build --preset linux-release --target deb
+```
+
+Use `linux-debug` for a full Linux debug build, including window tests. For an
+interactive desktop run `build/linux-release/bin/vynx-qr`. Qt selects the session
+backend; `QT_QPA_PLATFORM=xcb` and `QT_QPA_PLATFORM=wayland` can explicitly select
+one for diagnostics. Headless Xvfb tests do not establish GNOME/KDE compatibility.
+
+The DEB target uses CPack and system Qt. Runtime dependencies are inferred by
+dpkg-shlibdeps; QPA and Wayland plugins are explicit dependencies. The public DEB
+is built on Debian 12 and tested as the same downloaded artifact on Debian 12
+and Ubuntu 24.04. Ubuntu's separate native build remains a compatibility check.
+
+For Arch, install base-devel, cmake, ninja, rust, python, qt6-base, qt6-wayland,
+xorg-server-xvfb and xorg-xauth. Commit the source first, then run as a normal user:
+
+```bash
+python scripts/prepare-arch-package.py --output build/arch-package --build
+```
+
+This renders the PKGBUILD with the product version and SHA256 of `git archive`
+for the exact source commit. It never runs makepkg as root. Mandatory dependency
+notices are installed under `/usr/share/licenses/vynx-qr`, so Arch's container
+NoExtract setting for documentation cannot discard them.
+
+For AppImage, install the official Linux Qt 6.8.3 `linux_gcc_64` SDK using pinned
+aqtinstall 3.3.0, and set `QTDIR` to its `gcc_64` directory. The CI job lists the
+native XCB/OpenGL build dependencies. Enable matching APT deb-src repositories:
+bundled LGPL system libraries retain their corresponding source packages.
+
+```bash
+cmake --preset linux-appimage
+cmake --build --preset linux-appimage
+xvfb-run -a ctest --preset linux-appimage
+cmake --build --preset linux-appimage --target appimage
+```
+
+The packaging script verifies pinned linuxdeploy, Qt plugin and runtime hashes,
+keeps XCB/Wayland plugins, rejects WebEngine/QML/Quick/compositor libraries and
+includes Qt Base/Wayland/SVG source archives plus runtime/system dependency
+notices. The fresh-runner smoke launches the downloaded AppImage with FUSE; it
+does not silently substitute an extracted executable after a runtime failure.
+
+Linux output paths:
+
+```text
+build/linux-release/bin/vynx-qr
+build/linux-release/package/vynx-qr_<version>_amd64.deb
+build/arch-package/vynx-qr-<version>-1-x86_64.pkg.tar.zst
+build/appimage/package/VYNX-QR-<version>-x86_64.AppImage
+```
+
+Product version comes from root CMake PROJECT_VERSION. Private, unpublished Rust
+crate versions are independent. Every binary package includes its target-specific
+locked production dependency notices, checked again after artifact download.
+
+## Release verification
+
+The manual Release workflow builds all platforms without publishing a GitHub
+release. It invokes CI's native Linux build/package/smoke jobs, builds Windows
+installer/portable artifacts, and tests both on windows-2022 and windows-2025.
+Only after every required job succeeds does collection produce five binary
+packages and one unified SHA256SUMS.txt. Tag-triggered publication creates a draft
+and checks that the tag matches CMake's version. A failed package gate prevents
+partial publication.
+
+Do not tag v1.1.0 until the candidate is merged, the merge commit's main CI and
+manual Release run are green, and the real desktop checklist in
+[linux-manual-qa.md](linux-manual-qa.md) is completed. Current runner automation
+cannot substitute for that manual gate.

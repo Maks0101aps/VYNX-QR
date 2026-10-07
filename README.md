@@ -1,12 +1,24 @@
 # VYNX QR
 
-**Fast, private QR codes for Windows.**
+**Fast, private QR codes with native Qt Widgets and a Rust engine.**
+
+[![Candidate CI](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml/badge.svg?branch=1.1.0-update)](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml?query=branch%3A1.1.0-update)
+
+Stable release: Windows v1.0.1. The `1.1.0-update` branch adds Linux x86_64;
+release readiness and the pending real Wayland desktop QA are tracked in
+[docs/linux-manual-qa.md](docs/linux-manual-qa.md).
 
 Paste a link, text, an email address or a phone number and the code is there
 already — classified, rendered, and read back to prove it scans. No account, no
 telemetry, no network requests, and no history of what you encoded.
 
 ![VYNX QR](app/resources/icons/icon.ico)
+
+![Linux native window](docs/screenshots/linux-x11.png)
+
+Actual Ubuntu 24.04 / Qt 6.4.2 window under Xvfb/Openbox, captured in
+[Actions run 37586370670](https://github.com/Maks0101aps/VYNX-QR/actions/runs/37586370670).
+This is automated X11 evidence; manual GNOME/KDE Wayland validation is pending.
 
 ## Features
 
@@ -24,7 +36,8 @@ telemetry, no network requests, and no history of what you encoded.
 - **Real files.** Save as PNG or as genuine vector SVG. Copy puts an actual image
   on the clipboard, so it pastes into Word or a chat as a picture rather than as a
   file path.
-- **Native.** One process, about 30 MB of memory, and no browser engine.
+- **Native.** One application process and no browser engine. Measurements for
+  Windows and Linux are documented below; AppImage may also use a filesystem mount helper.
 
 ## Why VYNX QR
 
@@ -40,8 +53,9 @@ and when you close it the process is gone.
   open is the repository in About, and it hands that to the system browser.
 - The clipboard is read **once**, at start-up, and only if you leave that enabled.
   It is never watched.
-- Only preferences are stored, in `%APPDATA%\VYNX\QR\settings.json`. Encoded
-  content is never written anywhere.
+- Only preferences are stored: `%APPDATA%\VYNX\QR\settings.json` on Windows,
+  `$XDG_CONFIG_HOME/VYNX/QR/settings.json` on Linux, falling back to
+  `$HOME/.config/VYNX/QR/settings.json`. Encoded content is never written anywhere.
 - No analytics, no crash reporting, no accounts.
 
 ## Performance
@@ -55,6 +69,10 @@ Measured on Windows 11, idle, release build. Full method in
 | Memory (private) | **33 MB** | 190 MB |
 | Idle CPU | 0% | — |
 
+Linux RSS/PSS, startup and idle CPU measurements are in
+[docs/performance-linux.md](docs/performance-linux.md). Headless runner results
+are labelled as such.
+
 ## Installation
 
 Download one of the release artifacts:
@@ -63,6 +81,27 @@ Download one of the release artifacts:
 - `VYNX-QR-Portable-x64-<version>.zip` — run it from anywhere, nothing installed
 
 After installing, press `Win` and type `VYNX QR`.
+
+Linux candidate packages from Actions (not yet a stable release):
+
+```bash
+# Debian 12 / Ubuntu 24.04
+sudo apt install ./vynx-qr_1.1.0_amd64.deb
+# Arch Linux
+sudo pacman -U ./vynx-qr-1.1.0-1-x86_64.pkg.tar.zst
+# AppImage, ordinary user
+chmod +x VYNX-QR-1.1.0-x86_64.AppImage
+./VYNX-QR-1.1.0-x86_64.AppImage
+```
+
+Verify `SHA256SUMS.txt` before installing. DEB and Arch use distro Qt; AppImage
+bundles Qt and requires a working FUSE environment. Launch `vynx-qr` or the
+application-menu entry. Remove with `sudo apt remove vynx-qr`,
+`sudo pacman -R vynx-qr`, or delete the AppImage file. Preferences remain in the
+XDG directory. Runtime never requires root. Automated artifact checks pass on Debian 12, Ubuntu 24.04 and Arch Linux
+(rolling snapshot). AppImage FUSE launch is tested on Ubuntu 24.04. Real
+GNOME/KDE Wayland desktop QA is pending; other distro versions are unverified.
+No ARM64 or macOS package is provided.
 
 ## Keyboard
 
@@ -96,7 +135,10 @@ cd ..\bridge; cargo fmt --check; cargo clippy --all-targets -- -D warnings; carg
 cd ..; cmake --preset release; cmake --build --preset release; ctest --preset release
 ```
 
-Details, including why there is no debug build of the application itself, are in
+Linux uses `cmake --preset linux-release`, `cmake --build --preset linux-release`
+and `ctest --preset linux-release`; `linux-debug` includes the Linux window.
+
+Details, including why the Windows debug preset excludes the window, are in
 [docs/building.md](docs/building.md).
 
 Icons are generated without any binary asset tooling:
@@ -146,10 +188,10 @@ live.
 
 | | |
 | --- | --- |
-| Engine | 139 Rust tests, including round trips from payload to decoded symbol |
+| Engine | Windows: 128 unit + 14 integration; Linux: 127 unit + 14 integration |
 | Bridge | 15 Rust tests for the boundary |
-| Native | 40 checks from C++ through the bridge to a scanned result |
-| Window | 10 tests against the real window: live typing, the empty state, stale results, the original-text toggle, structured forms |
+| Native | 50 checks from C++ through the bridge to a scanned result |
+| Window | 15 test slots + init/cleanup = 17 QtTest passes; typing, original payload, forms, export, clipboard, theme and logo drops |
 | UI | logic states are covered through the native tests rather than by pixels |
 
 ## Licence

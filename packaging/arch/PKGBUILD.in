@@ -1,0 +1,40 @@
+# Generated from CMake's PROJECT_VERSION and a checksum-verified archive of the
+# exact Actions source commit by scripts/prepare-arch-package.py.
+pkgname=vynx-qr
+pkgver=@PROJECT_VERSION@
+pkgrel=1
+pkgdesc='Fast, private QR code generator'
+arch=('x86_64')
+url='https://github.com/Maks0101aps/VYNX-QR'
+license=('custom:VYNX-QR')
+depends=('qt6-base' 'qt6-wayland' 'gcc-libs')
+makedepends=('cmake' 'ninja' 'rust' 'python')
+checkdepends=('xorg-server-xvfb' 'xorg-xauth')
+# GCC slim-LTO C++ objects cannot be embedded in rustc's staticlib archive with
+# a usable CXX symbol index. Keep hardening flags and Rust's own release LTO;
+# disable only makepkg's additional, global GCC LTO pass.
+options=('!debug' '!lto')
+source=('vynx-qr-source.tar.gz')
+sha256sums=('@SOURCE_SHA256@')
+
+build() {
+  cd "$srcdir/vynx-qr"
+  cmake -S . -B build/arch-release -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+    -DVYNX_LINUX_LICENSE_DIR=share/licenses/vynx-qr \
+    -DVYNX_BUILD_TESTS=ON -DVYNX_BUILD_WINDOW_TESTS=ON
+  cmake --build build/arch-release
+  cmake --build build/arch-release --target license_payload
+}
+
+check() {
+  cd "$srcdir/vynx-qr"
+  xvfb-run -a ctest --test-dir build/arch-release --output-on-failure
+  python scripts/verify-rust-notices.py build/arch-release/linux-docs/licenses/rust \
+    --target x86_64-unknown-linux-gnu --lockfile bridge/Cargo.lock
+}
+
+package() {
+  cd "$srcdir/vynx-qr"
+  DESTDIR="$pkgdir" cmake --install build/arch-release
+}

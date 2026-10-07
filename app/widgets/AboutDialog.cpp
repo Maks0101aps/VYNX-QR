@@ -6,7 +6,7 @@
 #include <QVBoxLayout>
 
 #include "Theme.h"
-#include "WindowsIntegration.h"
+#include "platform/PlatformIntegration.h"
 
 AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent) {
   setWindowTitle(QStringLiteral("About VYNX QR"));
@@ -21,26 +21,24 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent) {
   name->setProperty("role", QStringLiteral("heading"));
   layout->addWidget(name);
 
-  auto *version = new QLabel(QStringLiteral("Version %1").arg(WindowsIntegration::versionString()));
+  auto *version = new QLabel(QStringLiteral("Version %1 · %2").arg(PlatformIntegration::versionString(), PlatformIntegration::platformName()));
   version->setProperty("role", QStringLiteral("caption"));
   layout->addWidget(version);
 
-  auto *summary = new QLabel(QStringLiteral("Fast, private QR codes for Windows."));
+  auto *summary = new QLabel(QStringLiteral("Fast, private QR codes."));
   layout->addWidget(summary);
 
   auto *privacy = new QLabel(QStringLiteral("100% local. No telemetry, no account,\nno history."));
   privacy->setProperty("role", QStringLiteral("caption"));
   layout->addWidget(privacy);
-  auto *qtNotice = new QLabel(QStringLiteral(
-      "Uses Qt under LGPL-3.0. Licence texts, Qt source and\n"
-      "library replacement instructions are included in licenses/qt."));
+  auto *qtNotice = new QLabel(PlatformIntegration::qtLicenseNotice());
   qtNotice->setWordWrap(true);
   layout->addWidget(qtNotice);
 
   layout->addSpacing(Tokens::SpaceSmall);
-  addLink(QStringLiteral("GitHub"), WindowsIntegration::repositoryUrl());
+  addLink(QStringLiteral("GitHub"), PlatformIntegration::repositoryUrl());
   addLink(QStringLiteral("Licence"), QStringLiteral("%1/blob/main/LICENSE")
-                                       .arg(WindowsIntegration::repositoryUrl()));
+                                       .arg(PlatformIntegration::repositoryUrl()));
 
   auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close);
   connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::accept);
@@ -54,6 +52,6 @@ void AboutDialog::addLink(const QString &text, const QString &url) {
   button->setAccessibleName(QStringLiteral("Open %1 in your browser").arg(text));
   // The shell opens it, so the application never opens a socket itself.
   connect(button, &QPushButton::clicked, this,
-          [url] { WindowsIntegration::openUrl(url); });
+          [url] { PlatformIntegration::openUrl(url); });
   layout()->addWidget(button);
 }

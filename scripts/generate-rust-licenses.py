@@ -1,47 +1,58 @@
-"""Generate the release Rust notice bundle from the locked Windows dependency graph."""
+"""Generate the release Rust notice bundle from a locked platform dependency graph."""
 
 import argparse
 import hashlib
 import html
 import io
 import json
+import platform
 from pathlib import Path
 import subprocess
 import tarfile
 import urllib.request
 
 VERSION = "0.9.2"
-TOOL_SHA256 = "1c03e5890238562497c2d89a3b75b02560af349c1fc3e713d3284f532a5cd748"
+TOOLS = {
+    "Windows": ("x86_64-pc-windows-msvc", "cargo-about.exe",
+                "1c03e5890238562497c2d89a3b75b02560af349c1fc3e713d3284f532a5cd748"),
+    "Linux": ("x86_64-unknown-linux-musl", "cargo-about",
+              "9099a59e820c38a68b9d65f300662a567d56562f9a10f6aa4c7e86c17c2566af"),
+}
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def cargo_about(cache):
-    executable = cache / "cargo-about.exe"
-    archive = cache / "cargo-about.tar.gz"
+    if platform.machine().lower() not in ("amd64", "x86_64"):
+        raise RuntimeError("The pinned cargo-about tools currently support x86_64 hosts")
+    host, name, expected = TOOLS[platform.system()]
+    executable = cache / name
+    archive = cache / f"cargo-about-{host}.tar.gz"
     cache.mkdir(parents=True, exist_ok=True)
-    if not archive.exists() or hashlib.sha256(archive.read_bytes()).hexdigest() != TOOL_SHA256:
+    if not archive.exists() or hashlib.sha256(archive.read_bytes()).hexdigest() != expected:
         url = (f"https://github.com/EmbarkStudios/cargo-about/releases/download/{VERSION}/"
-               f"cargo-about-{VERSION}-x86_64-pc-windows-msvc.tar.gz")
+               f"cargo-about-{VERSION}-{host}.tar.gz")
         with urllib.request.urlopen(url, timeout=120) as response:
             data = response.read()
-        if hashlib.sha256(data).hexdigest() != TOOL_SHA256:
+        if hashlib.sha256(data).hexdigest() != expected:
             raise RuntimeError("cargo-about download SHA256 mismatch")
         archive.write_bytes(data)
     # Read only the executable; no archive-controlled paths are extracted.
     with tarfile.open(archive) as package:
-        members = [m for m in package.getmembers() if m.isfile() and m.name.endswith("/cargo-about.exe")]
+        members = [m for m in package.getmembers() if m.isfile() and Path(m.name).name == name]
         if len(members) != 1:
             raise RuntimeError("Expected one cargo-about executable")
         data = package.extractfile(members[0]).read()
     if not executable.exists() or executable.read_bytes() != data:
         executable.write_bytes(data)
+    if platform.system() == "Linux":
+        executable.chmod(0o755)
     return executable
 
 
-def generate(output, cache):
+def generate(output, cache, target):
     tool = cargo_about(cache)
     subprocess.run([
-        str(tool), "generate", "--locked", "--fail", "-c", str(ROOT / "about.toml"),
+        str(tool), "generate", "--locked", "--fail", "--target", target, "-c", str(ROOT / "about.toml"),
         "-m", str(ROOT / "bridge/Cargo.toml"), "--format", "json", "-o", str(cache / "about.json"),
     ], cwd=ROOT, check=True)
     about = json.loads((cache / "about.json").read_text(encoding="utf-8"))
@@ -85,7 +96,7 @@ def generate(output, cache):
     licenses = "".join(f"<h2>{html.escape(l['id'])}</h2><pre>{html.escape(l['text'])}</pre>"
                        for l in about["licenses"])
     lock_hash = hashlib.sha256((ROOT / "bridge/Cargo.lock").read_bytes()).hexdigest()
-    manifest = {"generator": f"cargo-about {VERSION}", "target": "x86_64-pc-windows-msvc",
+    manifest = {"generator": f"cargo-about {VERSION}", "target": target,
                 "lockfile_sha256": lock_hash, "crates": inventory}
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     content = ("<!doctype html><html lang='en'><meta charset='utf-8'>"
@@ -94,7 +105,7 @@ def generate(output, cache):
                "pre{white-space:pre-wrap;overflow-wrap:anywhere}section{border-top:1px solid #aaa}</style>"
                "<h1>Rust third party licences and copyright notices</h1>"
                f"<p>Generated with cargo-about {VERSION} from bridge/Cargo.lock ({lock_hash}). "
-               f"{len(crates)} crates in the default-feature Windows release dependency graph. "
+               f"{len(crates)} crates in the default-feature {html.escape(target)} release dependency graph. "
                "Build-only and development-only dependencies are excluded. This conservative "
                "inventory also retains production procedural macro dependencies; it is not "
                "a claim that every crate contributes machine code after linker optimisation.</p>"
@@ -110,5 +121,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
+    parser.add_argument("--target", choices=("x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"),
+                        default="x86_64-pc-windows-msvc" if platform.system() == "Windows" else "x86_64-unknown-linux-gnu")
     args = parser.parse_args()
-    generate(args.output.resolve(), args.cache.resolve())
+    generate(args.output.resolve(), args.cache.resolve(), args.target)

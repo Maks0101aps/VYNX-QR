@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=VYNX QR
+Comment=Fast, private QR codes
+Exec=vynx-qr
+Icon=vynx-qr
+Terminal=false
+Type=Application
+Categories=Utility;Graphics;
+StartupNotify=true
+StartupWMClass=VYNX QR

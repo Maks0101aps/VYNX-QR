@@ -892,7 +892,7 @@ pub fn load_logo(path: &str) -> Result<LogoAsset, String> {
 }
 
 pub fn system_info() -> SystemInfo {
-    let info = vynx_qr_core::platform::windows::system_info();
+    let info = vynx_qr_core::platform::system_info();
     SystemInfo {
         os_build: info.os_build,
         is_windows_11: info.is_windows_11,

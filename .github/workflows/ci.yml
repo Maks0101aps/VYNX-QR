@@ -1,13 +1,14 @@
 name: CI
 
 on:
+  workflow_call:
   push:
-    branches: [main, CI-fix]
+    branches: [main, CI-fix, 1.1.0-update]
   pull_request:
     branches: [main]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -20,16 +21,18 @@ env:
 
 jobs:
   rust:
-    name: Rust (${{ matrix.crate }})
-    runs-on: windows-latest
+    name: Rust (${{ matrix.crate }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         crate: [core, bridge]
+        os: [windows-latest, ubuntu-24.04]
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up MSVC x64
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
@@ -49,11 +52,11 @@ jobs:
 
       - name: Clippy
         working-directory: ${{ matrix.crate }}
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
       - name: Tests
         working-directory: ${{ matrix.crate }}
-        run: cargo test
+        run: cargo test --locked
 
   native:
     name: Native build and window tests
@@ -74,8 +77,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            core -> target
-            bridge -> target
+            bridge -> ../build/release/cargo
 
       - name: Install Qt
         # aqtinstall is the mechanism used to produce the reference builds on the
@@ -162,3 +164,268 @@ jobs:
             build/release/bin/platforms/
             build/release/bin/styles/
           if-no-files-found: error
+
+  ubuntu:
+    name: Ubuntu native build and window tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland xvfb xauth openbox wmctrl xdotool imagemagick
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bridge -> ../build/linux-release/cargo
+      - run: cmake --preset linux-release
+      - run: cmake --build --preset linux-release
+      - run: xvfb-run -a ctest --preset linux-release
+      - name: Native GUI launch
+        run: xvfb-run -a python3 scripts/linux-window-smoke.py build/linux-release/bin/vynx-qr --report build/linux-release/window-smoke.json --screenshot build/linux-release/linux-window.png
+      - name: Debug native build and tests
+        run: |
+          cmake --preset linux-debug
+          cmake --build --preset linux-debug
+          xvfb-run -a ctest --preset linux-debug
+      - name: Build Debian package with system Qt
+        run: |
+          sudo apt-get install -y dpkg-dev desktop-file-utils
+          desktop-file-validate packaging/linux/vynx-qr.desktop
+          cmake --build --preset linux-release --target deb
+          python3 scripts/verify-rust-notices.py build/linux-release/linux-docs/licenses/rust --target x86_64-unknown-linux-gnu --lockfile bridge/Cargo.lock
+          cd build/linux-release/package
+          sha256sum *.deb > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-deb
+          path: |
+            build/linux-release/package/*.deb
+            build/linux-release/package/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ubuntu-native-evidence
+          path: |
+            build/linux-release/window-smoke.json
+            build/linux-release/linux-window.png
+            build/linux-release/Testing/Temporary/
+            build/linux-debug/Testing/Temporary/
+            build/linux-release/bin/vynx-qr
+          if-no-files-found: warn
+
+  arch:
+    name: Arch makepkg and Qt tests
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+    steps:
+      - name: Install native Arch build dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel cmake ninja rust qt6-base qt6-wayland python git desktop-file-utils xorg-server-xvfb xorg-xauth
+      - uses: actions/checkout@v4
+      - name: Build using makepkg as an ordinary user
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- python scripts/prepare-arch-package.py --output build/arch-package --build
+          cd build/arch-package
+          sha256sum vynx-qr-*.pkg.tar.zst > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: |
+            build/arch-package/vynx-qr-*.pkg.tar.zst
+            build/arch-package/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arch-build-evidence
+          path: |
+            build/arch-package/PKGBUILD
+            build/arch-package/source-commit.txt
+            build/arch-package/src/vynx-qr/build/arch-release/Testing/Temporary/
+          if-no-files-found: warn
+
+  arch-smoke:
+    name: Arch artifact install/run/remove
+    needs: arch
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+    steps:
+      - name: Install runtime test infrastructure
+        run: |
+          pacman -Syu --noconfirm python git desktop-file-utils xorg-server-xvfb xorg-xauth openbox wmctrl
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-package
+          path: artifacts
+      - name: Test the actual artifact
+        run: |
+          useradd -m builder
+          python scripts/arch-package-smoke.py artifacts/vynx-qr-*.pkg.tar.zst --manifest artifacts/SHA256SUMS.txt --report build/arch-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arch-smoke-evidence
+          path: build/arch-smoke/
+          if-no-files-found: warn
+
+  deb-smoke:
+    name: DEB from Actions install/run/remove
+    needs: debian
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-deb
+          path: artifacts
+      - name: Install test infrastructure
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth openbox wmctrl desktop-file-utils
+      - name: Install, run and remove the actual artifact
+        run: |
+          python3 scripts/linux-package-smoke.py artifacts/*.deb --manifest artifacts/SHA256SUMS.txt --report build/deb-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deb-smoke-evidence
+          path: build/deb-smoke/
+          if-no-files-found: warn
+
+  debian:
+    name: Debian 12 native build and DEB
+    runs-on: ubuntu-24.04
+    container: rust:1.90-bookworm
+    steps:
+      - name: Install native Debian dependencies
+        working-directory: /
+        run: |
+          apt-get update
+          apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland python3 xvfb xauth dpkg-dev desktop-file-utils
+      - uses: actions/checkout@v4
+        with:
+          path: source tree with spaces
+      - name: Build, test and package with Debian system Qt
+        run: |
+          cd "source tree with spaces"
+          cmake --preset linux-release
+          cmake --build --preset linux-release
+          xvfb-run -a ctest --preset linux-release
+          cmake --build --preset linux-release --target deb
+          cd build/linux-release/package
+          sha256sum *.deb > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-deb
+          path: |
+            source tree with spaces/build/linux-release/package/*.deb
+            source tree with spaces/build/linux-release/package/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debian-build-evidence
+          path: source tree with spaces/build/linux-release/Testing/Temporary/
+          if-no-files-found: warn
+
+  debian-smoke:
+    name: Debian 12 artifact install/run/remove
+    needs: debian
+    runs-on: ubuntu-24.04
+    container: debian:12
+    steps:
+      - name: Install runtime test infrastructure
+        run: |
+          apt-get update
+          apt-get install -y python3 git sudo xvfb xauth openbox wmctrl desktop-file-utils
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/vynx-smoke
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-deb
+          path: artifacts
+      - name: Install, run and remove the actual artifact as an ordinary user
+        run: |
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- python3 scripts/linux-package-smoke.py artifacts/*.deb --manifest artifacts/SHA256SUMS.txt --report build/debian-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debian-smoke-evidence
+          path: build/debian-smoke/
+          if-no-files-found: warn
+
+  appimage:
+    name: AppImage with official Qt
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native build dependencies and source repositories
+        run: |
+          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0 xvfb xauth desktop-file-utils dpkg-dev
+      - name: Install official Qt SDK
+        run: |
+          python3 -m pip install 'aqtinstall==3.3.0'
+          aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt"
+          echo "QTDIR=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bridge -> ../build/appimage/cargo
+      - name: Build and test against bundled Qt version
+        run: |
+          cmake --preset linux-appimage
+          cmake --build --preset linux-appimage
+          ldd "$QTDIR/plugins/platforms/libqxcb.so" | tee build/appimage/xcb-dependencies.txt
+          if grep -q "not found" build/appimage/xcb-dependencies.txt; then exit 1; fi
+          QT_DEBUG_PLUGINS=1 xvfb-run -a ctest --preset linux-appimage
+      - name: Package AppImage and notices
+        run: |
+          cmake --build --preset linux-appimage --target appimage
+          cd build/appimage/package
+          sha256sum *.AppImage > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: |
+            build/appimage/package/*.AppImage
+            build/appimage/package/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: appimage-build-evidence
+          path: |
+            build/appimage/appimage-inventory.json
+            build/appimage/xcb-dependencies.txt
+            build/appimage/Testing/Temporary/
+          if-no-files-found: warn
+
+  appimage-smoke:
+    name: AppImage from Actions fresh-runner launch
+    needs: appimage
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: artifacts
+      - name: Install runtime test infrastructure
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth openbox wmctrl desktop-file-utils fuse3 libxcb-cursor0
+      - name: Launch the actual AppImage without extraction fallback
+        run: python3 scripts/appimage-smoke.py artifacts/*.AppImage --manifest artifacts/SHA256SUMS.txt --report build/appimage-smoke/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: appimage-smoke-evidence
+          path: build/appimage-smoke/
+          if-no-files-found: warn

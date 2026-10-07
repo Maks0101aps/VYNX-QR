@@ -126,7 +126,7 @@ pub mod messages {
     pub const LOGO_TOO_BIG: &str = "That image is too large. Use an image under 4096 x 4096.";
     pub const FILE_WRITE_FAILED: &str = "VYNX QR could not save the file.";
     pub const FILE_READ_FAILED: &str = "VYNX QR could not read that file.";
-    pub const CLIPBOARD_FAILED: &str = "VYNX QR could not access the Windows clipboard.";
+    pub const CLIPBOARD_FAILED: &str = "VYNX QR could not access the clipboard.";
     pub const SETTINGS_FAILED: &str = "VYNX QR could not load your settings.";
     pub const RENDER_FAILED: &str = "VYNX QR could not render this QR code.";
     pub const VERIFICATION_FAILED: &str = "QR verification failed.";
