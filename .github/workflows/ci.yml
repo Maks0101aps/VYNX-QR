@@ -173,7 +173,7 @@ jobs:
       - name: Install native dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland xvfb xauth openbox wmctrl xdotool
+          sudo apt-get install -y ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland xvfb xauth openbox wmctrl xdotool imagemagick
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: bridge -> ../build/linux-release/cargo
@@ -181,7 +181,7 @@ jobs:
       - run: cmake --build --preset linux-release
       - run: xvfb-run -a ctest --preset linux-release
       - name: Native GUI launch
-        run: xvfb-run -a python3 scripts/linux-window-smoke.py build/linux-release/bin/vynx-qr --report build/linux-release/window-smoke.json
+        run: xvfb-run -a python3 scripts/linux-window-smoke.py build/linux-release/bin/vynx-qr --report build/linux-release/window-smoke.json --screenshot build/linux-release/linux-window.png
       - name: Debug native build and tests
         run: |
           cmake --preset linux-debug
@@ -208,6 +208,7 @@ jobs:
           name: ubuntu-native-evidence
           path: |
             build/linux-release/window-smoke.json
+            build/linux-release/linux-window.png
             build/linux-release/Testing/Temporary/
             build/linux-debug/Testing/Temporary/
             build/linux-release/bin/vynx-qr
@@ -299,12 +300,18 @@ jobs:
     name: Debian 12 native build and DEB
     runs-on: ubuntu-24.04
     container: rust:1.90-bookworm
+    defaults:
+      run:
+        working-directory: source tree with spaces
     steps:
       - name: Install native Debian dependencies
+        working-directory: /
         run: |
           apt-get update
           apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-wayland python3 xvfb xauth dpkg-dev desktop-file-utils
       - uses: actions/checkout@v4
+        with:
+          path: source tree with spaces
       - name: Build, test and package with Debian system Qt
         run: |
           cmake --preset linux-release
@@ -317,14 +324,14 @@ jobs:
         with:
           name: debian-deb
           path: |
-            build/linux-release/package/*.deb
-            build/linux-release/package/SHA256SUMS.txt
+            source tree with spaces/build/linux-release/package/*.deb
+            source tree with spaces/build/linux-release/package/SHA256SUMS.txt
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: debian-build-evidence
-          path: build/linux-release/Testing/Temporary/
+          path: source tree with spaces/build/linux-release/Testing/Temporary/
           if-no-files-found: warn
 
   debian-smoke:
@@ -364,7 +371,7 @@ jobs:
         run: |
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
-          sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 xvfb xauth desktop-file-utils dpkg-dev
+          sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0 xvfb xauth desktop-file-utils dpkg-dev
       - name: Install official Qt SDK
         run: |
           python3 -m pip install 'aqtinstall==3.3.0'
@@ -378,7 +385,7 @@ jobs:
           cmake --preset linux-appimage
           cmake --build --preset linux-appimage
           ldd "$QTDIR/plugins/platforms/libqxcb.so" | tee build/appimage/xcb-dependencies.txt
-          ! grep -q "not found" build/appimage/xcb-dependencies.txt
+          if grep -q "not found" build/appimage/xcb-dependencies.txt; then exit 1; fi
           QT_DEBUG_PLUGINS=1 xvfb-run -a ctest --preset linux-appimage
       - name: Package AppImage and notices
         run: |

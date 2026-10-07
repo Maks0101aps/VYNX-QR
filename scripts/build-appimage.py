@@ -91,10 +91,19 @@ def system_notices(appdir, cache):
         copyright_file = Path('/usr/share/doc') / package / 'copyright'
         content = copyright_file.read_bytes()
         (notices / f'{package}-copyright').write_bytes(content)
+        common = {}
+        for name in set(re.findall(r'/usr/share/common-licenses/([A-Za-z0-9.+-]+)', content.decode('utf-8'))):
+            name = name.rstrip('.')
+            license_text = (Path('/usr/share/common-licenses') / name).read_bytes()
+            destination = notices / 'common-licenses'
+            destination.mkdir(exist_ok=True)
+            (destination / name).write_bytes(license_text)
+            common[name] = hashlib.sha256(license_text).hexdigest()
         metadata = subprocess.check_output(['dpkg-query', '-W', '-f=${source:Package}\t${source:Version}', owner], text=True)
         source_name, source_version = metadata.split('\t')
         item = {'package': package, 'source': source_name, 'version': source_version,
-                'libraries': [file.name], 'notice_sha256': hashlib.sha256(content).hexdigest(), 'sources': {}}
+                'libraries': [file.name], 'notice_sha256': hashlib.sha256(content).hexdigest(),
+                'common_licenses': common, 'sources': {}}
         # Runtime exception permits the GCC runtime's binary distribution under
         # its stated terms. Other bundled LGPL libraries retain source here.
         text = content.decode('utf-8')

@@ -51,6 +51,8 @@ def main():
             for package in manifest['packages']:
                 name = package['package']
                 assert hashlib.sha256((system / f'{name}-copyright').read_bytes()).hexdigest() == package['notice_sha256']
+                for filename, sha in package['common_licenses'].items():
+                    assert hashlib.sha256((system / 'common-licenses' / filename).read_bytes()).hexdigest() == sha
                 for filename, sha in package['sources'].items():
                     assert hashlib.sha256((system / 'source' / name / filename).read_bytes()).hexdigest() == sha
             env = os.environ | {'LD_LIBRARY_PATH': str(appdir / 'usr/lib')}

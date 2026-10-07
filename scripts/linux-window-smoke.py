@@ -46,6 +46,7 @@ def main():
     parser.add_argument('--runs', type=int, default=5)
     parser.add_argument('--config-home', type=Path)
     parser.add_argument('--appimage', action='store_true', help='Record the AppImage runtime mount helper separately')
+    parser.add_argument('--screenshot', type=Path, help='Capture the first real window after entering a sample URL')
     args = parser.parse_args()
     report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,6 +101,13 @@ def main():
                         after['idle_cpu_percent'] = 100 * (after['cpu_ticks'] - before['cpu_ticks']) / os.sysconf('SC_CLK_TCK') / (time.monotonic() - idle_started)
                         after['startup_ms'] = elapsed
                         report['samples'].append(after)
+                        if index == 0 and args.screenshot:
+                            args.screenshot.parent.mkdir(parents=True, exist_ok=True)
+                            subprocess.run(['xdotool', 'windowactivate', '--sync', window], check=True)
+                            subprocess.run(['xdotool', 'type', '--clearmodifiers', 'github.com'], check=True)
+                            time.sleep(1)
+                            subprocess.run(['import', '-window', window, str(args.screenshot)], check=True)
+                            report['screenshot'] = str(args.screenshot)
                         # A window-manager close exercises the normal Qt close path.
                         subprocess.run(['wmctrl', '-ic', window], check=True)
                         assert app.wait(timeout=10) == 0, 'application did not close cleanly'
