@@ -116,7 +116,7 @@ These are in-application shortcuts. VYNX QR never registers a global hotkey.
 
 ## Build from source
 
-You need Rust, CMake, the MSVC build tools, Qt 6.5 or newer, and NSIS for the
+You need Rust, CMake, the MSVC build tools, Qt 6.4 or newer, and NSIS for the
 installer. **Node is not required** — the previous web build is gone.
 
 ```powershell

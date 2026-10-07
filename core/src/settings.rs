@@ -1,8 +1,9 @@
 //! Persisted preferences.
 //!
 //! Only preferences are stored, never QR content. The file is a small JSON
-//! document in `%APPDATA%\VYNX\QR\settings.json`; no database, no sync, no
-//! telemetry.
+//! document in `%APPDATA%\VYNX\QR\settings.json` on Windows, or
+//! `$XDG_CONFIG_HOME/VYNX/QR/settings.json` on Linux with a `~/.config` fallback.
+//! No database, no sync, no telemetry.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -123,7 +124,8 @@ pub fn load_from(path: &Path) -> Settings {
     }
 }
 
-/// Persist settings atomically enough for a desktop utility.
+/// Persist settings as JSON. Writes are not atomic; a truncated or corrupt file
+/// falls back to defaults when loaded.
 pub fn save(settings: &Settings) -> AppResult<()> {
     let Some(path) = default_path() else {
         return Err(err_with(
