@@ -2,6 +2,8 @@
 
 **Fast, private QR codes with native Qt Widgets and a Rust engine.**
 
+[![Candidate CI](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml/badge.svg?branch=1.1.0-update)](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml?query=branch%3A1.1.0-update)
+
 Stable release: Windows v1.0.1. The `1.1.0-update` branch adds Linux x86_64;
 release readiness and the pending real Wayland desktop QA are tracked in
 [docs/linux-manual-qa.md](docs/linux-manual-qa.md).
@@ -185,10 +187,10 @@ live.
 
 | | |
 | --- | --- |
-| Engine | Cargo reports platform-specific totals, including encode/decode round trips |
+| Engine | Windows: 128 unit + 14 integration; Linux: 127 unit + 14 integration |
 | Bridge | 15 Rust tests for the boundary |
-| Native | 40 checks from C++ through the bridge to a scanned result |
-| Window | QtTest reports the current total: typing, original payload, forms, export, clipboard, theme and logo drops |
+| Native | 50 checks from C++ through the bridge to a scanned result |
+| Window | 15 test slots + init/cleanup = 17 QtTest passes; typing, original payload, forms, export, clipboard, theme and logo drops |
 | UI | logic states are covered through the native tests rather than by pixels |
 
 ## Licence

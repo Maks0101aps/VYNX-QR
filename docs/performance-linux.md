@@ -47,9 +47,9 @@ run's independent AppImage build failed; they are not an all-platform green clai
 
 | Artifact environment | Launches | RSS (KiB) | PSS (KiB) | Startup range / median |
 | --- | --- | --- | --- | --- |
-| Debian DEB on Ubuntu 24.04 | 15 | 40,400?40,656 | 29,644?29,840 | 56.84?110.05 / 57.82 ms |
-| Same DEB on Debian 12 | 15 | 39,332?39,812 | 31,611?32,102 | 56.35?377.94 / 56.89 ms |
-| Arch package on fresh Arch | 5 | 42,272?42,640 | 35,232?35,560 | 58.33?58.81 / 58.43 ms |
+| Debian DEB on Ubuntu 24.04 | 15 | 40,400-40,656 | 29,644-29,840 | 56.84-110.05 / 57.82 ms |
+| Same DEB on Debian 12 | 15 | 39,332-39,812 | 31,611-32,102 | 56.35-377.94 / 56.89 ms |
+| Arch package on fresh Arch | 5 | 42,272-42,640 | 35,232-35,560 | 58.33-58.81 / 58.43 ms |
 
 Each DEB job used three independent Xvfb/Openbox sessions and five launches per
 session. Every application had zero children and exited normally on window close.

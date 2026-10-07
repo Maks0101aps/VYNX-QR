@@ -31,7 +31,6 @@ def main():
         result['size_bytes'] = image.stat().st_size
         image.chmod(0o755)
         version = subprocess.check_output([sys.executable, 'scripts/project-version.py'], text=True).strip()
-        assert subprocess.check_output([str(image), '--version'], text=True).strip() == f'VYNX QR {version}'
         with tempfile.TemporaryDirectory(prefix='vynx AppImage audit ') as stage:
             run(str(image), '--appimage-extract', cwd=stage, stdout=subprocess.DEVNULL)
             appdir = Path(stage) / 'squashfs-root'
@@ -63,6 +62,7 @@ def main():
             assert 'not found' not in linked, linked
             assert all(str(appdir) in row for row in linked.splitlines() if 'libQt6' in row), linked
             args.report.with_suffix('.ldd.txt').write_text(linked)
+        assert subprocess.check_output([str(image), '--version'], text=True).strip() == f'VYNX QR {version}'
         # No extraction fallback: FUSE launch failures remain failures.
         with tempfile.TemporaryDirectory(prefix='vynx AppImage config ') as config:
             settings = Path(config) / 'VYNX/QR/settings.json'

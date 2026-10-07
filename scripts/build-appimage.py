@@ -188,7 +188,8 @@ def main():
     # linuxdeploy's compatibility blacklist omits GLVND's OpenGL entry point,
     # but a fresh runner lacks it. Ship the generic dispatch libraries (not GPU
     # drivers) and include their distro notices in the same provenance audit.
-    dispatch = [Path('/usr/lib/x86_64-linux-gnu') / name for name in ('libOpenGL.so.0', 'libGLdispatch.so.0')]
+    dispatch = [Path('/usr/lib/x86_64-linux-gnu') / name for name in
+                ('libOpenGL.so.0', 'libGLdispatch.so.0', 'libEGL.so.1', 'libGLX.so.0', 'libGL.so.1')]
     assert all(p.is_file() for p in dispatch), 'GLVND build dependency missing'
     explicit = [argument for path in dispatch for argument in ('--library', str(path))]
     run(deploy, '--appdir', str(appdir), *explicit, '--plugin', 'qt', cwd=tools_dir, env=env)
