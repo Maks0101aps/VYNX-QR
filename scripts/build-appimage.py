@@ -48,7 +48,7 @@ def archive_notice(archive, basename, destination):
             target.write_bytes(source.extractfile(member).read())
 
 
-def system_notices(appdir, cache):
+def system_notices(appdir, cache, qt):
     notices = appdir / 'usr/share/doc/vynx-qr/licenses/system'
     notices.mkdir(parents=True)
     ldconfig = subprocess.check_output(['ldconfig', '-p'], text=True)
@@ -61,12 +61,17 @@ def system_notices(appdir, cache):
                 system_paths[name] = path
     packages = {}
     qt_libraries = set()
+    icu_libraries = set()
     for file in sorted((appdir / 'usr/lib').rglob('*')):
         if not file.is_file() or file.read_bytes()[:4] != b'\x7fELF':
             continue
         if file.name.startswith('libQt6'):
             qt_libraries.add(file.name)
             assert not re.search(r'Qt6(Qml|Quick|WebEngine|WaylandCompositor|Designer)', file.name), file.name
+            continue
+        if re.fullmatch(r'libicu(data|i18n|uc)\.so\.73(?:\.2)?', file.name):
+            assert (qt / 'lib' / file.name).is_file(), f'ICU not supplied by official SDK: {file.name}'
+            icu_libraries.add(file.name)
             continue
         origin = system_paths.get(file.name)
         if not origin:
@@ -120,7 +125,24 @@ def system_notices(appdir, cache):
             assert any(n.endswith('.dsc') for n in item['sources']), f'no source description for {package}'
         packages[package] = item
     assert any(n.startswith('libQt6Widgets') for n in qt_libraries)
-    (notices / 'manifest.json').write_text(json.dumps({'libraries': sorted(qt_libraries), 'packages': list(packages.values())}, indent=2) + '\n')
+    sdk = []
+    if icu_libraries:
+        probe = "import ctypes,json; v=(ctypes.c_uint8*4)(); ctypes.CDLL('libicuuc.so.73').u_getVersion_73(v); print(json.dumps(list(v)))"
+        version = json.loads(subprocess.check_output(['python3', '-c', probe], text=True,
+                             env=os.environ | {'LD_LIBRARY_PATH': str(qt / 'lib')}))
+        assert version == [73, 2, 0, 0], f'unexpected SDK ICU version: {version}'
+        pin = {'url': 'https://github.com/unicode-org/icu/releases/download/release-73-2/icu4c-73_2-src.tgz',
+               'sha256': '818a80712ed3caacd9b652305e01afc7fa167e6f2e94996da44b90c2ab604ce1'}
+        archive = download('icu4c-73_2-src.tgz', pin, cache)
+        destination = notices / 'sdk/icu'
+        destination.mkdir(parents=True)
+        shutil.copy2(archive, destination / archive.name)
+        archive_notice(archive, 'LICENSE', destination)
+        sdk.append({'name': 'ICU', 'version': version, 'libraries': sorted(icu_libraries),
+                    'files': {p.relative_to(notices).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                              for p in destination.iterdir() if p.is_file()}, 'source': pin})
+    (notices / 'manifest.json').write_text(json.dumps({'libraries': sorted(qt_libraries),
+        'packages': list(packages.values()), 'sdk_dependencies': sdk}, indent=2) + '\n')
 
 
 def main():
@@ -166,7 +188,7 @@ def main():
     run(deploy, '--appdir', str(appdir), '--plugin', 'qt', cwd=tools_dir, env=env)
     assert (appdir / 'usr/plugins/platforms/libqxcb.so').is_file()
     assert list((appdir / 'usr/plugins/platforms').glob('libqwayland*.so'))
-    system_notices(appdir, tools_dir)
+    system_notices(appdir, tools_dir, qt)
     qt_docs = appdir / 'usr/share/doc/vynx-qr/licenses/qt'
     qt_manifest = {}
     for module, digest in QT_SOURCES.items():

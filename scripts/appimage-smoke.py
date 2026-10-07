@@ -48,6 +48,9 @@ def main():
                     assert hashlib.sha256((directory / name).read_bytes()).hexdigest() == pin['sha256'], name
             system = docs / 'licenses/system'
             manifest = json.loads((system / 'manifest.json').read_text())
+            for dependency in manifest['sdk_dependencies']:
+                for filename, sha in dependency['files'].items():
+                    assert hashlib.sha256((system / filename).read_bytes()).hexdigest() == sha
             for package in manifest['packages']:
                 name = package['package']
                 assert hashlib.sha256((system / f'{name}-copyright').read_bytes()).hexdigest() == package['notice_sha256']
