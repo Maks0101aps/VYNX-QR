@@ -226,6 +226,10 @@ def main():
     assert libraries == {p.relative_to(appdir).as_posix() for p in (appdir / 'usr/lib').rglob('*') if p.is_file()}, 'output plugin changed audited library inventory'
     image = Path(env['LDAI_OUTPUT'])
     assert image.is_file()
+    # The same self-contained binary opens the shared wizard when launched
+    # with this name. Installed copies are named vynx-qr.AppImage and open QR.
+    setup = image.with_name(f'VYNX-QR-Setup-{version}-x86_64.AppImage')
+    shutil.copy2(image, setup)
     inventory = [p.relative_to(appdir).as_posix() for p in appdir.rglob('*') if p.is_file()]
     (build / 'appimage-inventory.json').write_text(json.dumps(sorted(inventory), indent=2) + '\n')
     print(f'AppImage: {image}, {image.stat().st_size} bytes')

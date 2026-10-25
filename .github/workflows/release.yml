@@ -198,7 +198,7 @@ jobs:
           if-no-files-found: warn
 
   collect:
-    name: Collect five verified public packages
+    name: Collect six verified public packages
     needs: [release, installer-smoke, platform-validation]
     runs-on: ubuntu-24.04
     steps:
@@ -254,17 +254,4 @@ jobs:
           fail_on_unmatched_files: true
           draft: true
           generate_release_notes: true
-          body: |
-            Native Qt Widgets application with the same Rust QR engine on Windows and Linux.
-            No browser engine, telemetry, account or network client.
-
-            Windows: per-user installer or portable ZIP.
-            Linux x86_64: DEB, Arch package or self-contained AppImage.
-            Verify downloads against SHA256SUMS.txt.
-
-            Qt and Rust notices are included in every package; bundled Qt includes
-            its corresponding source. See THIRD_PARTY_LICENSES.md.
-
-            Windows installer and portable artifacts are tested on fresh GitHub Windows runners.
-            Linux package artifacts are tested on fresh Debian, Ubuntu and Arch environments.
-            Dedicated Windows 10 consumer-machine validation remains pending.
+          body_path: docs/release-notes.md

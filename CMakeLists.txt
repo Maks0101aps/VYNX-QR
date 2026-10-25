@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(VYNX_QR
-  VERSION 1.1.1
+  VERSION 1.1.2
   DESCRIPTION "Fast, private QR codes for Windows and Linux."
   HOMEPAGE_URL "https://github.com/Maks0101aps/VYNX-QR"
   LANGUAGES CXX
@@ -181,8 +181,11 @@ message(STATUS "Bridge include root: ${VYNX_BRIDGE_INCLUDE_ROOT}")
 # ---------------------------------------------------------------------------
 # The window
 # ---------------------------------------------------------------------------
+set(VYNX_SETUP_SOURCES app/setup/SetupBackend.cpp app/setup/SetupBackend.h
+    app/setup/SetupWindow.cpp app/setup/SetupWindow.h app/resources/setup.qrc)
 if(VYNX_BUILD_APP)
 add_executable(VYNX_QR WIN32
+  ${VYNX_SETUP_SOURCES}
   app/main.cpp
   app/MainWindow.cpp
   app/MainWindow.h
@@ -258,6 +261,15 @@ if(VYNX_BUILD_TESTS)
 endif()
 
 if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
+  add_executable(vynx_setup_test tests/Setup_test.cpp ${VYNX_SETUP_SOURCES}
+      app/resources/icons.qrc)
+  target_include_directories(vynx_setup_test PRIVATE "${CMAKE_SOURCE_DIR}/app")
+  target_link_libraries(vynx_setup_test PRIVATE Qt6::Widgets Qt6::Test)
+  target_compile_definitions(vynx_setup_test PRIVATE VYNX_VERSION="${PROJECT_VERSION}")
+  if(MSVC)
+    target_compile_options(vynx_setup_test PRIVATE /W4 /utf-8)
+  endif()
+  add_test(NAME setup COMMAND vynx_setup_test)
   # The window under test needs the application's own sources, so it is built from
   # the same list rather than duplicating it.
   add_executable(vynx_window_test
@@ -323,7 +335,7 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   endif()
   # ENVIRONMENT_MODIFICATION rather than a hand built PATH: the system PATH is
   # full of semicolons, which CMake would read as list separators and mangle.
-  set_tests_properties(window PROPERTIES
+  set_tests_properties(window setup PROPERTIES
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${VYNX_QT_BIN}"
   )
   endif()
