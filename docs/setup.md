@@ -57,4 +57,5 @@ pre-existing per-user integration. The Linux artifact smoke is
 `xvfb-run -a python3 scripts/setup-appimage-smoke.py <Setup.AppImage> --report <report.json>`;
 it requires the desktop tools installed by the CI workflow and working FUSE.
 
-No tag, release publication or remote CI run was performed for this change.
+This initial local checkpoint preceded tagging and remote release validation.
+Subsequent validation is recorded in GitHub Actions and the release notes.

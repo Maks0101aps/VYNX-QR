@@ -153,9 +153,13 @@ void SetupBackend::install(const QString &directory) {
       fail(QStringLiteral("Не удалось сохранить приложение. Проверьте свободное место на диске.")); return;
     }
     const auto icon = directory_ + QStringLiteral("/icon.png");
+    // Gio validates argv[0] before expanding desktop %% escapes. Keep the
+    // user-selected directory in an argument so literal percent signs work.
+    // A fixed relative command also avoids env treating '=' in a path as an
+    // environment assignment.
     const auto entry = QByteArray("# VYNX QR: ") + directory_.toUtf8() + '\n' +
-        QStringLiteral("[Desktop Entry]\nType=Application\nName=VYNX QR\nComment=Fast, private QR codes\nExec=%1\nIcon=%2\nTerminal=false\nCategories=Utility;\nActions=Uninstall;\n\n[Desktop Action Uninstall]\nName=Uninstall VYNX QR\nExec=%1 --uninstall\n")
-            .arg(desktopQuote(executable()), QString(icon).replace(QLatin1Char('\\'), QStringLiteral("\\\\"))).toUtf8();
+        QStringLiteral("[Desktop Entry]\nType=Application\nName=VYNX QR\nComment=Fast, private QR codes\nExec=/usr/bin/env --chdir=%1 ./vynx-qr.AppImage\nIcon=%2\nTerminal=false\nCategories=Utility;\nActions=Uninstall;\n\n[Desktop Action Uninstall]\nName=Uninstall VYNX QR\nExec=/usr/bin/env --chdir=%1 ./vynx-qr.AppImage --uninstall\n")
+            .arg(desktopQuote(directory_), QString(icon).replace(QLatin1Char('\\'), QStringLiteral("\\\\"))).toUtf8();
     if (!QFile::copy(QStringLiteral(":/icons/vynx-qr.png"), icon) && !QFileInfo::exists(icon)) {
       fail(QStringLiteral("Не удалось сохранить значок приложения.")); return;
     }

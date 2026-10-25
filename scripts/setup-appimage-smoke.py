@@ -52,7 +52,7 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix='VYNX setup ') as temporary:
             root = Path(temporary)
-            destination = root / 'QR folder % dollar$'
+            destination = root / 'QR folder % dollar$ equals='
             env = os.environ | {'HOME': str(root), 'XDG_DATA_HOME': str(root / 'data'),
                                 'XDG_CONFIG_HOME': str(root / 'config')}
             process = subprocess.Popen([str(image)], env=env)
