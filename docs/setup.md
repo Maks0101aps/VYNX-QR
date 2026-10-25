@@ -4,6 +4,9 @@ The supplied reference is implemented as a shared Qt Widgets wizard: navy
 sidebar, four steps, product icon, blue action, folder picker, asynchronous
 installation, errors with retry, and optional first launch. The native title
 bar retains dragging, resizing, keyboard navigation and window-manager support.
+The wizard stylesheet uses fixed dark colours on both platforms. It does not
+follow system appearance changes; application theme tests do not establish
+system-theme support for the installer.
 
 ![Welcome screen from the actual Qt widget](screenshots/setup-welcome.png)
 
@@ -32,6 +35,11 @@ directories and allows retry after a partially completed installation.
 DEB, Arch and portable Windows packaging keep their existing behavior.
 
 ## Validation on 2026-10-25
+
+The checked-in [Windows smoke report](evidence/setup-windows.json) identifies
+`VYNX-QR-Setup-x64-1.1.1.exe` and its SHA256. Its results apply to that artifact;
+they do not establish acceptance of the 1.1.2 installer. Outstanding Windows
+scenarios are tracked in [windows-manual-qa.md](windows-manual-qa.md).
 
 - Windows release application and packaged Setup EXE built with MSVC / Qt 6.8.3.
 - CTest `bridge`, `setup`, and `window`: 3/3 passed. Setup tests cover navigation,

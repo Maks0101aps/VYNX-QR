@@ -2,7 +2,7 @@
 
 **Fast, private QR codes with native Qt Widgets and a Rust engine.**
 
-[![Candidate CI](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml/badge.svg?branch=1.1.0-update)](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml?query=branch%3A1.1.0-update)
+[![CI](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml?query=branch%3Amain)
 
 Download Windows and Linux x86_64 packages from
 [GitHub Releases](https://github.com/Maks0101aps/VYNX-QR/releases).
@@ -84,6 +84,9 @@ Download one of the release artifacts:
 The Windows Setup opens a dark, four-step Qt wizard with a folder picker,
 installation status and an optional first launch. `/S` and a final `/D=<path>`
 remain available for unattended installation.
+The wizard currently uses fixed dark colours on Windows and Linux; it does not
+follow the system light/dark setting. Installer acceptance gaps and the scope of
+existing evidence are tracked in [docs/windows-manual-qa.md](docs/windows-manual-qa.md).
 
 Linux graphical setup uses `VYNX-QR-Setup-<version>-x86_64.AppImage`:
 mark it executable and open it. The same wizard installs a private copy under
