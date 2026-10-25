@@ -1,0 +1,77 @@
+﻿{
+    "success":  true,
+    "installer":  "VYNX-QR-Setup-x64-1.1.1.exe",
+    "checks":  [
+                   {
+                       "name":  "Silent installer rejects an unrelated nonempty directory",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Bootstrap forwards silent /D with spaces and Unicode",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Owned partial installation can be resumed",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Registration points to selected destination",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Start Menu targets installed application",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload Qt6Core.dll",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload Qt6Gui.dll",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload Qt6Widgets.dll",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload platforms\\qwindows.dll",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload Uninstall.exe",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload LICENSE",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed payload licenses\\rust\\manifest.json",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed application opens a real window",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Installed application closes normally",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Uninstall removes application files",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Uninstall preserves unrelated files",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "Uninstall removes test registration",
+                       "passed":  true
+                   }
+               ],
+    "date":  "2026-10-25",
+    "sha256":  "68d515cd9d06f6895c00ed5d8c0f7c75d521c5004a89a7e19f0358b14e73e18d",
+    "priorRegistrationRestored":  true
+}

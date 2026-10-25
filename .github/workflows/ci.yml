@@ -370,6 +370,10 @@ jobs:
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0 xvfb xauth desktop-file-utils dpkg-dev
+          # Hosted images retain older runtime libraries after their matching
+          # source versions disappear from the active apt indices. Keep deployed
+          # binaries and the corresponding source downloads on the same revision.
+          sudo apt-get upgrade -y --no-install-recommends
       - name: Install official Qt SDK
         run: |
           python3 -m pip install 'aqtinstall==3.3.0'
@@ -420,9 +424,12 @@ jobs:
       - name: Install runtime test infrastructure
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth openbox wmctrl desktop-file-utils fuse3 libxcb-cursor0
+          sudo apt-get install -y xvfb xauth openbox wmctrl xdotool imagemagick python3-gi desktop-file-utils fuse3 libxcb-cursor0
       - name: Launch the actual AppImage without extraction fallback
-        run: python3 scripts/appimage-smoke.py artifacts/*.AppImage --manifest artifacts/SHA256SUMS.txt --report build/appimage-smoke/report.json
+        run: |
+          version=$(python3 scripts/project-version.py)
+          python3 scripts/appimage-smoke.py "artifacts/VYNX-QR-$version-x86_64.AppImage" --manifest artifacts/SHA256SUMS.txt --report build/appimage-smoke/report.json
+          xvfb-run -a python3 scripts/setup-appimage-smoke.py "artifacts/VYNX-QR-Setup-$version-x86_64.AppImage" --report build/appimage-smoke/setup.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

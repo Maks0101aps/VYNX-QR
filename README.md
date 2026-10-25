@@ -4,8 +4,9 @@
 
 [![Candidate CI](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml/badge.svg?branch=1.1.0-update)](https://github.com/Maks0101aps/VYNX-QR/actions/workflows/ci.yml?query=branch%3A1.1.0-update)
 
-Stable release: Windows v1.0.1. The `1.1.0-update` branch adds Linux x86_64;
-release readiness and the pending real Wayland desktop QA are tracked in
+Download Windows and Linux x86_64 packages from
+[GitHub Releases](https://github.com/Maks0101aps/VYNX-QR/releases).
+The pending real Wayland desktop QA is tracked in
 [docs/linux-manual-qa.md](docs/linux-manual-qa.md).
 
 Paste a link, text, an email address or a phone number and the code is there
@@ -80,18 +81,31 @@ Download one of the release artifacts:
 - `VYNX-QR-Setup-x64-<version>.exe` — per-user installer, no administrator prompt
 - `VYNX-QR-Portable-x64-<version>.zip` — run it from anywhere, nothing installed
 
+The Windows Setup opens a dark, four-step Qt wizard with a folder picker,
+installation status and an optional first launch. `/S` and a final `/D=<path>`
+remain available for unattended installation.
+
+Linux graphical setup uses `VYNX-QR-Setup-<version>-x86_64.AppImage`:
+mark it executable and open it. The same wizard installs a private copy under
+`~/.local/opt/vynx-qr` (or your chosen empty folder) and adds a menu entry.
+Remove it through the menu entry's **Uninstall VYNX QR** action, or run the
+installed `vynx-qr.AppImage --uninstall`. Preferences and unrelated files stay.
+Keep the `Setup` filename when downloading; an ordinary AppImage opens the QR
+application directly, and can also open the wizard with `--setup`.
+DEB and Arch packages continue to use the system package manager.
+
 After installing, press `Win` and type `VYNX QR`.
 
-Linux candidate packages from Actions (not yet a stable release):
+Linux packages:
 
 ```bash
 # Debian 12 / Ubuntu 24.04
-sudo apt install ./vynx-qr_1.1.0_amd64.deb
+sudo apt install ./vynx-qr_1.1.2_amd64.deb
 # Arch Linux
-sudo pacman -U ./vynx-qr-1.1.0-1-x86_64.pkg.tar.zst
+sudo pacman -U ./vynx-qr-1.1.2-1-x86_64.pkg.tar.zst
 # AppImage, ordinary user
-chmod +x VYNX-QR-1.1.0-x86_64.AppImage
-./VYNX-QR-1.1.0-x86_64.AppImage
+chmod +x VYNX-QR-1.1.2-x86_64.AppImage
+./VYNX-QR-1.1.2-x86_64.AppImage
 ```
 
 Verify `SHA256SUMS.txt` before installing. DEB and Arch use distro Qt; AppImage

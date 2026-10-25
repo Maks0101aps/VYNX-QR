@@ -32,16 +32,28 @@ if(NOT MAKENSIS_EXECUTABLE)
   # Not fatal: the application and its tests build without an installer.
   message(STATUS "makensis was not found, so the installer target is unavailable")
 else()
+  file(TO_NATIVE_PATH "${VYNX_PACKAGE_DIR}/uninstall-files.nsh" VYNX_UNINSTALL_FILES)
+  file(TO_NATIVE_PATH "${VYNX_PACKAGE_DIR}/install-backend.exe" VYNX_BACKEND)
   add_custom_target(installer
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/generate-uninstall-manifest.py"
+            --payload "${VYNX_PAYLOAD_DIR}" --output "${VYNX_PACKAGE_DIR}/uninstall-files.nsh"
     COMMAND "${MAKENSIS_EXECUTABLE}" "/DVYNX_VERSION=${PROJECT_VERSION}"
             "/DVYNX_PAYLOAD_DIR=${VYNX_PAYLOAD_DIR}"
             "/DVYNX_ICON=${VYNX_RC_ICON}"
             "/DVYNX_LICENSE=${CMAKE_SOURCE_DIR}/LICENSE"
+            "/DVYNX_UNINSTALL_FILES=${VYNX_UNINSTALL_FILES}"
             "/XSetCompressor /SOLID lzma"
-            "/XOutFile ${VYNX_PACKAGE_DIR}/VYNX-QR-Setup-x64-${PROJECT_VERSION}.exe"
+            "/DVYNX_OUTPUT=${VYNX_PACKAGE_DIR}/install-backend.exe"
             "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
+    COMMAND "${MAKENSIS_EXECUTABLE}" "/DVYNX_VERSION=${PROJECT_VERSION}"
+            "/DVYNX_PAYLOAD_DIR=${VYNX_PAYLOAD_DIR}"
+            "/DVYNX_ICON=${VYNX_RC_ICON}"
+            "/DVYNX_BACKEND=${VYNX_BACKEND}"
+            "/DVYNX_OUTPUT=${VYNX_PACKAGE_DIR}/VYNX-QR-Setup-x64-${PROJECT_VERSION}.exe"
+            "${CMAKE_SOURCE_DIR}/installer/bootstrap.nsi"
     DEPENDS VYNX_QR license_payload "${VYNX_PACKAGE_DIR}/vynx_qr.nsi"
-    COMMENT "Building the NSIS installer"
+            "${CMAKE_SOURCE_DIR}/installer/bootstrap.nsi"
+    COMMENT "Building the branded Qt setup and NSIS backend"
     VERBATIM
   )
 endif()

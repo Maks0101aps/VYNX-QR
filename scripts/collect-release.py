@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect exactly five tested binary packages and one unified checksum manifest."""
+"""Collect six binary packages and one unified checksum manifest."""
 import argparse
 import hashlib
 import importlib.util
@@ -22,7 +22,8 @@ def main():
         'vynx-qr-release': [f'VYNX-QR-Setup-x64-{version}.exe', f'VYNX-QR-Portable-x64-{version}.zip'],
         'debian-deb': [f'vynx-qr_{version}_amd64.deb'],
         'arch-package': [f'vynx-qr-{version}-1-x86_64.pkg.tar.zst'],
-        'linux-appimage': [f'VYNX-QR-{version}-x86_64.AppImage'],
+        'linux-appimage': [f'VYNX-QR-{version}-x86_64.AppImage',
+                          f'VYNX-QR-Setup-{version}-x86_64.AppImage'],
     }
     args.output.mkdir(parents=True, exist_ok=True)
     assert not list(args.output.iterdir()), 'public destination must be empty'
@@ -39,7 +40,7 @@ def main():
             assert line in manifest, f'checksum mismatch: {name}'
             shutil.copy2(file, args.output / name)
             lines.append(line)
-    assert len(lines) == 5
+    assert len(lines) == 6
     (args.output / 'SHA256SUMS.txt').write_text('\n'.join(sorted(lines)) + '\n')
     print('\n'.join(sorted(lines)))
 

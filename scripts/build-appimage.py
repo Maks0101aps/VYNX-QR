@@ -217,6 +217,7 @@ def main():
     archive_notice(tools['runtime-source.tar.gz'], 'LICENSE', runtime_docs)
     archive_notice(tools['fuse-3.15.0.tar.xz'], 'LGPL2.txt', runtime_docs)
     archive_notice(tools['squashfuse-0.5.2.tar.gz'], 'LICENSE', runtime_docs)
+    archive_notice(tools['musl-1.2.5.tar.gz'], 'COPYRIGHT', runtime_docs)
     (runtime_docs / 'manifest.json').write_text(json.dumps(runtime_manifest, indent=2) + '\n')
     run('python3', str(ROOT / 'scripts/verify-rust-notices.py'), str(appdir / 'usr/share/doc/vynx-qr/licenses/rust'),
         '--target', 'x86_64-unknown-linux-gnu', '--lockfile', str(ROOT / 'bridge/Cargo.lock'))
@@ -226,6 +227,10 @@ def main():
     assert libraries == {p.relative_to(appdir).as_posix() for p in (appdir / 'usr/lib').rglob('*') if p.is_file()}, 'output plugin changed audited library inventory'
     image = Path(env['LDAI_OUTPUT'])
     assert image.is_file()
+    # The same self-contained binary opens the shared wizard when launched
+    # with this name. Installed copies are named vynx-qr.AppImage and open QR.
+    setup = image.with_name(f'VYNX-QR-Setup-{version}-x86_64.AppImage')
+    shutil.copy2(image, setup)
     inventory = [p.relative_to(appdir).as_posix() for p in appdir.rglob('*') if p.is_file()]
     (build / 'appimage-inventory.json').write_text(json.dumps(sorted(inventory), indent=2) + '\n')
     print(f'AppImage: {image}, {image.stat().st_size} bytes')
