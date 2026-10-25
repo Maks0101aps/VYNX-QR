@@ -370,6 +370,10 @@ jobs:
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y ninja-build g++ libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0 xvfb xauth desktop-file-utils dpkg-dev
+          # Hosted images retain older runtime libraries after their matching
+          # source versions disappear from the active apt indices. Keep deployed
+          # binaries and the corresponding source downloads on the same revision.
+          sudo apt-get upgrade -y --no-install-recommends
       - name: Install official Qt SDK
         run: |
           python3 -m pip install 'aqtinstall==3.3.0'
