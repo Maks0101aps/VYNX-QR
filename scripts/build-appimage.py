@@ -217,6 +217,7 @@ def main():
     archive_notice(tools['runtime-source.tar.gz'], 'LICENSE', runtime_docs)
     archive_notice(tools['fuse-3.15.0.tar.xz'], 'LGPL2.txt', runtime_docs)
     archive_notice(tools['squashfuse-0.5.2.tar.gz'], 'LICENSE', runtime_docs)
+    archive_notice(tools['musl-1.2.5.tar.gz'], 'COPYRIGHT', runtime_docs)
     (runtime_docs / 'manifest.json').write_text(json.dumps(runtime_manifest, indent=2) + '\n')
     run('python3', str(ROOT / 'scripts/verify-rust-notices.py'), str(appdir / 'usr/share/doc/vynx-qr/licenses/rust'),
         '--target', 'x86_64-unknown-linux-gnu', '--lockfile', str(ROOT / 'bridge/Cargo.lock'))

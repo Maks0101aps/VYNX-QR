@@ -26,7 +26,8 @@ Referenced Debian common-licence texts are copied in full, rather than retaining
 paths that only exist on the build machine.
 
 The Type 2 AppImage runtime is pinned to source commit
-`8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa`; its source, libfuse 3.15.0 source,
+`dd6cebedcbddde9c82f89b011e8e1d40b6e43868` (stable release `20251108`);
+its source, libfuse 3.15.0 source,
 squashfuse 0.5.2 source, patch/build recipe and static dependency notices are in
 `licenses/appimage-runtime/`. The supplied runtime source's BUILD.md describes
 rebuilding with a modified libfuse. A rebuilt runtime can be supplied to
