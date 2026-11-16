@@ -42,6 +42,7 @@
 #include "widgets/CustomizePanel.h"
 #include "widgets/QrPreview.h"
 #include "widgets/SpecialQrForms.h"
+#include "updater/AutoUpdater.h"
 #include "vynx-qr-bridge/src/lib.rs.h"
 
 namespace {
@@ -67,11 +68,13 @@ private slots:
     QVERIFY(settingsDir_.isValid());
     qputenv("APPDATA", settingsDir_.path().toUtf8());
     qputenv("XDG_CONFIG_HOME", settingsDir_.path().toUtf8());
+    qputenv("VYNX_NO_UPDATE_CHECK", "1");
     // The window reads the clipboard once at start-up, so a test must not be able
     // to be influenced by whatever the developer happened to copy.
     QApplication::clipboard()->clear();
   }
   void cleanupTestCase() {
+    qunsetenv("VYNX_NO_UPDATE_CHECK");
     if (originalAppData_.isNull()) qunsetenv("APPDATA"); else qputenv("APPDATA", originalAppData_);
     if (originalXdg_.isNull()) qunsetenv("XDG_CONFIG_HOME"); else qputenv("XDG_CONFIG_HOME", originalXdg_);
   }
@@ -440,6 +443,16 @@ private slots:
     QVERIFY(drop.isAccepted());
     QCOMPARE(dropped.size(), 1);
     QCOMPARE(dropped.at(0).at(0).toString(), path);
+  }
+
+  void autoUpdaterVersionComparisonWorks() {
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4"), QStringLiteral("1.1.3")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("1.1.4"), QStringLiteral("1.1.3")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.2.0"), QStringLiteral("1.1.3")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v2.0.0"), QStringLiteral("1.1.3")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.3"), QStringLiteral("1.1.3")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.2"), QStringLiteral("1.1.3")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.0.1"), QStringLiteral("1.1.3")));
   }
 
 private:

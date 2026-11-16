@@ -29,6 +29,8 @@
 #include "widgets/SettingsDialog.h"
 #include "widgets/QrPreview.h"
 #include "widgets/SpecialQrForms.h"
+#include "updater/AutoUpdater.h"
+#include "updater/UpdateDialog.h"
 
 namespace {
 
@@ -128,6 +130,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   applyTheme();
   PlatformIntegration::observeSystemTheme(this, [this] { applyTheme(); });
+
+  autoUpdater_ = new AutoUpdater(this);
+  connect(autoUpdater_, &AutoUpdater::updateAvailable, this, &MainWindow::onUpdateAvailable);
+
+  if (!qEnvironmentVariableIsSet("VYNX_NO_UPDATE_CHECK")) {
+    QTimer::singleShot(2000, this, [this] {
+      autoUpdater_->checkForUpdates(true);
+    });
+  }
 }
 
 MainWindow::~MainWindow() = default;
@@ -667,7 +678,12 @@ void MainWindow::applyTheme() {
 }
 
 void MainWindow::onOpenAbout() {
-  AboutDialog dialog(this);
+  AboutDialog dialog(this, autoUpdater_);
+  dialog.exec();
+}
+
+void MainWindow::onUpdateAvailable(const UpdateInfo &info) {
+  UpdateDialog dialog(info, autoUpdater_, this);
   dialog.exec();
 }
 

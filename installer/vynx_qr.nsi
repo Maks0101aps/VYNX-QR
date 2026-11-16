@@ -13,7 +13,7 @@ Unicode true
 !include "MUI2.nsh"
 
 !ifndef VYNX_VERSION
-  !define VYNX_VERSION "1.0.1"
+  !define VYNX_VERSION "1.1.3"
 !endif
 !ifndef VYNX_PAYLOAD_DIR
   !define VYNX_PAYLOAD_DIR "..\\bin"

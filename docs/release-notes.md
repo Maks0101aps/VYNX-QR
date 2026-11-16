@@ -1,18 +1,14 @@
-# VYNX QR 1.1.2
+# VYNX QR 1.1.3
 
-This release adds a dark, four-step graphical setup for Windows and Linux,
-with folder selection, installation status, retry after an error and optional
-first launch.
+This release introduces an automatic update checking system (Auto-Updater)
+upon application start, along with general reliability improvements.
 
-- Windows: per-user Setup EXE with the new Qt wizard. Silent `/S` and final
-  `/D=<path>` remain supported. Existing install locations are remembered.
-- Linux: a new `VYNX-QR-Setup-1.1.2-x86_64.AppImage` installs the application
-  in your home directory and adds a menu entry with an Uninstall action.
-  Keep the Setup filename or use `--setup` to open the wizard explicitly.
-- Removal preserves unrelated files and preferences. Interrupted Windows
-  installations can be retried, and uninstalling an older destination preserves
-  integration owned by a newer installation.
-- Portable Windows ZIP, ordinary AppImage, DEB and Arch packages remain available.
+- Auto-Updater: checks for new releases on GitHub in a background thread at launch.
+- If an update is available, prompts the user with release notes and enables a one-click update.
+- On Windows: downloads the installer and runs silent setup (`/S`) before seamlessly restarting.
+- Built-in manual update check available directly from the About dialog.
+- Preserves all preferences, settings, and user configuration during updates.
+- Setup EXE, Portable ZIP, DEB, Arch packages, and AppImage remain available.
 
 Verify all downloads against `SHA256SUMS.txt`. Qt and Rust notices are included;
 bundled Qt includes corresponding source material.

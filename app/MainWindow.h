@@ -15,11 +15,13 @@ class QStackedWidget;
 class QVBoxLayout;
 
 class AboutDialog;
+class AutoUpdater;
 class ClipboardSuggestion;
 class CustomizePanel;
 class QrPreview;
 class SettingsDialog;
 class SpecialQrForms;
+struct UpdateInfo;
 
 /// The window: state, wiring, and nothing else.
 ///
@@ -70,6 +72,7 @@ private slots:
   void onCustomizeToggled();
   void onLogoAdded();
   void onLogoDropped(const QString &path);
+  void onUpdateAvailable(const UpdateInfo &info);
 
 private:
   friend class MainWindowTest;
@@ -161,4 +164,5 @@ private:
   QPushButton *settingsButton_ = nullptr;
   QPushButton *aboutButton_ = nullptr;
   QVBoxLayout *composerLayout_ = nullptr;
+  AutoUpdater *autoUpdater_ = nullptr;
 };
