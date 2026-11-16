@@ -5,6 +5,8 @@
 #include <QComboBox>
 #include <QClipboard>
 #include <QCloseEvent>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFile>
 #include <QSaveFile>
 #include <QFileDialog>
@@ -12,6 +14,7 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QTextEdit>
 #include <QMenu>
@@ -26,6 +29,8 @@
 #include "widgets/Bridge.h"
 #include "widgets/ClipboardSuggestion.h"
 #include "widgets/CustomizePanel.h"
+#include "widgets/ScanResultDialog.h"
+#include "widgets/ScreenSnipper.h"
 #include "widgets/SettingsDialog.h"
 #include "widgets/QrPreview.h"
 #include "widgets/SpecialQrForms.h"
@@ -55,6 +60,14 @@ QString suggestName(const vynx::Payload &payload) {
     base = QStringLiteral("contact-%1 %2")
                .arg(vynxq::toQString(payload.vcard.first_name),
                     vynxq::toQString(payload.vcard.last_name));
+  } else if (payload.kind == vynx::PayloadType::Event) {
+    base = QStringLiteral("event-%1").arg(vynxq::toQString(payload.event.title));
+  } else if (payload.kind == vynx::PayloadType::Totp) {
+    base = QStringLiteral("totp-%1").arg(vynxq::toQString(payload.totp.label));
+  } else if (payload.kind == vynx::PayloadType::Crypto) {
+    base = QStringLiteral("crypto-%1").arg(vynxq::toQString(payload.crypto.currency));
+  } else if (payload.kind == vynx::PayloadType::Payment) {
+    base = QStringLiteral("payment-%1").arg(vynxq::toQString(payload.payment.name));
   }
 
   base = base.toLower();
@@ -130,6 +143,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   applyTheme();
   PlatformIntegration::observeSystemTheme(this, [this] { applyTheme(); });
+
+  snipper_ = new ScreenSnipper(this);
+  connect(snipper_, &ScreenSnipper::codeDecoded, this, &MainWindow::onQrDecoded);
+  connect(snipper_, &ScreenSnipper::scanFailed, this, &MainWindow::showToast);
+
+  setAcceptDrops(true);
 
   autoUpdater_ = new AutoUpdater(this);
   connect(autoUpdater_, &AutoUpdater::updateAvailable, this, &MainWindow::onUpdateAvailable);
@@ -254,12 +273,24 @@ void MainWindow::buildComposer(QWidget *composer) {
 
   composerLayout_->addLayout(actions);
 
+  auto *toolsRow = new QHBoxLayout;
+  toolsRow->setContentsMargins(0, 0, 0, 0);
+  toolsRow->setSpacing(Tokens::SpaceSmall);
+
   specialButton_ = new QPushButton(QStringLiteral("+  Special QR"), composer);
   specialButton_->setProperty("flat", true);
   specialButton_->setCursor(Qt::PointingHandCursor);
   specialButton_->setAccessibleName(QStringLiteral("Create a Wi-Fi, contact, email, phone, "
-                                                    "message or location QR code"));
-  composerLayout_->addWidget(specialButton_);
+                                                    "message, event, 2FA, crypto or payment QR code"));
+  toolsRow->addWidget(specialButton_, 1);
+
+  scanButton_ = new QPushButton(QStringLiteral("📷  Scan QR ▾"), composer);
+  scanButton_->setProperty("flat", true);
+  scanButton_->setCursor(Qt::PointingHandCursor);
+  scanButton_->setAccessibleName(QStringLiteral("Scan a QR code from screen, file, or clipboard"));
+  toolsRow->addWidget(scanButton_, 1);
+
+  composerLayout_->addLayout(toolsRow);
 
   toast_ = new QLabel(composer);
   toast_->setProperty("role", QStringLiteral("caption"));
@@ -281,6 +312,7 @@ void MainWindow::buildComposer(QWidget *composer) {
   connect(clear_, &QPushButton::clicked, this, &MainWindow::onClearInput);
   connect(customizeButton_, &QPushButton::clicked, this, &MainWindow::onCustomizeToggled);
   connect(specialButton_, &QPushButton::clicked, this, &MainWindow::onSpecialRequested);
+  connect(scanButton_, &QPushButton::clicked, this, &MainWindow::onScanMenuRequested);
 }
 
 void MainWindow::buildPreview(QWidget *pane) {
@@ -346,6 +378,12 @@ void MainWindow::wireShortcuts() {
 
   auto *settingsShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+,")), this);
   connect(settingsShortcut, &QShortcut::activated, this, &MainWindow::onOpenSettings);
+
+  auto *snipShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+S")), this);
+  connect(snipShortcut, &QShortcut::activated, this, &MainWindow::onStartScreenSnipping);
+
+  auto *clipScanShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+V")), this);
+  connect(clipScanShortcut, &QShortcut::activated, this, &MainWindow::onScanFromClipboard);
 
   auto *escape = new QShortcut(QKeySequence(Qt::Key_Escape), this);
   connect(escape, &QShortcut::activated, this, [this] {
@@ -716,12 +754,16 @@ void MainWindow::onSpecialRequested() {
 
   QMenu menu(this);
   const QList<QPair<QString, vynx::PayloadType>> kinds = {
-      {QStringLiteral("Wi-Fi"), vynx::PayloadType::Wifi},
-      {QStringLiteral("Contact"), vynx::PayloadType::VCard},
-      {QStringLiteral("Email"), vynx::PayloadType::Email},
-      {QStringLiteral("Phone"), vynx::PayloadType::Phone},
-      {QStringLiteral("Message"), vynx::PayloadType::Sms},
-      {QStringLiteral("Location"), vynx::PayloadType::Geo},
+      {QStringLiteral("Wi-Fi сеть"), vynx::PayloadType::Wifi},
+      {QStringLiteral("Контакт (vCard)"), vynx::PayloadType::VCard},
+      {QStringLiteral("Email сообщение"), vynx::PayloadType::Email},
+      {QStringLiteral("Телефонный номер"), vynx::PayloadType::Phone},
+      {QStringLiteral("SMS сообщение"), vynx::PayloadType::Sms},
+      {QStringLiteral("Геолокация (Geo)"), vynx::PayloadType::Geo},
+      {QStringLiteral("Событие календаря"), vynx::PayloadType::Event},
+      {QStringLiteral("2FA код (TOTP)"), vynx::PayloadType::Totp},
+      {QStringLiteral("Криптовалюта (Crypto)"), vynx::PayloadType::Crypto},
+      {QStringLiteral("Оплата по реквизитам / СБП"), vynx::PayloadType::Payment},
   };
   for (const auto &entry : kinds) {
     menu.addAction(entry.first, this, [this, entry] {
@@ -730,6 +772,134 @@ void MainWindow::onSpecialRequested() {
     });
   }
   menu.exec(specialButton_->mapToGlobal(QPoint(0, 0)));
+}
+
+void MainWindow::onScanMenuRequested() {
+  QMenu menu(this);
+  menu.addAction(QStringLiteral("📷  Снимок области экрана (Ctrl+Shift+S)"), this,
+                 &MainWindow::onStartScreenSnipping);
+  menu.addAction(QStringLiteral("📁  Сканировать из файла..."), this,
+                 &MainWindow::onScanImageFile);
+  menu.addAction(QStringLiteral("📋  Распознать из буфера (Ctrl+Shift+V)"), this,
+                 &MainWindow::onScanFromClipboard);
+  menu.exec(scanButton_->mapToGlobal(QPoint(0, scanButton_->height())));
+}
+
+void MainWindow::onStartScreenSnipping() {
+  if (snipper_) {
+    snipper_->startSnipping();
+  }
+}
+
+void MainWindow::onScanImageFile() {
+  const QString path = QFileDialog::getOpenFileName(
+      this, QStringLiteral("Выберите изображение с QR-кодом"), QString(),
+      QStringLiteral("Изображения (*.png *.jpg *.jpeg *.webp *.bmp)"));
+  if (path.isEmpty()) {
+    return;
+  }
+  QImage img(path);
+  if (img.isNull()) {
+    showToast(QStringLiteral("Не удалось открыть изображение"));
+    return;
+  }
+  img = img.convertToFormat(QImage::Format_RGBA8888);
+  rust::Slice<const uint8_t> slice(img.constBits(), static_cast<size_t>(img.sizeInBytes()));
+  try {
+    const rust::String result = vynx::decode_qr_rgba(slice, static_cast<uint32_t>(img.width()),
+                                                      static_cast<uint32_t>(img.height()));
+    const QString text = vynxq::toQString(result);
+    if (text.isEmpty()) {
+      showToast(QStringLiteral("QR-код на изображении не найден"));
+      return;
+    }
+    onQrDecoded(text);
+  } catch (const rust::Error &) {
+    showToast(QStringLiteral("QR-код не найден или поврежден"));
+  }
+}
+
+void MainWindow::onScanFromClipboard() {
+  const QClipboard *clipboard = QApplication::clipboard();
+  const QImage img = clipboard->image();
+  if (img.isNull()) {
+    showToast(QStringLiteral("В буфере обмена нет изображения"));
+    return;
+  }
+  QImage formatted = img.convertToFormat(QImage::Format_RGBA8888);
+  rust::Slice<const uint8_t> slice(formatted.constBits(), static_cast<size_t>(formatted.sizeInBytes()));
+  try {
+    const rust::String result = vynx::decode_qr_rgba(slice, static_cast<uint32_t>(formatted.width()),
+                                                      static_cast<uint32_t>(formatted.height()));
+    const QString text = vynxq::toQString(result);
+    if (text.isEmpty()) {
+      showToast(QStringLiteral("QR-код в изображении не найден"));
+      return;
+    }
+    onQrDecoded(text);
+  } catch (const rust::Error &) {
+    showToast(QStringLiteral("QR-код не найден в буфере обмена"));
+  }
+}
+
+void MainWindow::onQrDecoded(const QString &text) {
+  auto *dialog = new ScanResultDialog(text, this);
+  connect(dialog, &ScanResultDialog::insertRequested, this, [this](const QString &content) {
+    setComposerMode(true);
+    inputField_->setText(content);
+    inputText_ = content;
+    onSmartInputChanged();
+    showToast(QStringLiteral("Вставлено в генератор"));
+  });
+  dialog->exec();
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event) {
+  if (event->mimeData()->hasUrls() || event->mimeData()->hasImage()) {
+    event->acceptProposedAction();
+  } else {
+    QMainWindow::dragEnterEvent(event);
+  }
+}
+
+void MainWindow::dropEvent(QDropEvent *event) {
+  if (event->mimeData()->hasImage()) {
+    const QImage img = qvariant_cast<QImage>(event->mimeData()->imageData());
+    if (!img.isNull()) {
+      QImage formatted = img.convertToFormat(QImage::Format_RGBA8888);
+      rust::Slice<const uint8_t> slice(formatted.constBits(), static_cast<size_t>(formatted.sizeInBytes()));
+      try {
+        const rust::String result = vynx::decode_qr_rgba(slice, static_cast<uint32_t>(formatted.width()),
+                                                          static_cast<uint32_t>(formatted.height()));
+        const QString text = vynxq::toQString(result);
+        if (!text.isEmpty()) {
+          onQrDecoded(text);
+          event->acceptProposedAction();
+          return;
+        }
+      } catch (...) {}
+    }
+  } else if (event->mimeData()->hasUrls()) {
+    for (const QUrl &url : event->mimeData()->urls()) {
+      const QString path = url.toLocalFile();
+      QImage img(path);
+      if (!img.isNull()) {
+        img = img.convertToFormat(QImage::Format_RGBA8888);
+        rust::Slice<const uint8_t> slice(img.constBits(), static_cast<size_t>(img.sizeInBytes()));
+        try {
+          const rust::String result = vynx::decode_qr_rgba(slice, static_cast<uint32_t>(img.width()),
+                                                            static_cast<uint32_t>(img.height()));
+          const QString text = vynxq::toQString(result);
+          if (!text.isEmpty()) {
+            onQrDecoded(text);
+            event->acceptProposedAction();
+            return;
+          }
+        } catch (...) {}
+      }
+    }
+  }
+  QMainWindow::dropEvent(event);
 }
 
 void MainWindow::onBackToSmart() { setComposerMode(true); }

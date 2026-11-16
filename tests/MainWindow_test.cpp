@@ -96,7 +96,9 @@ private slots:
     const auto kinds = {vynx::PayloadType::Text, vynx::PayloadType::Wifi,
                         vynx::PayloadType::VCard, vynx::PayloadType::Email,
                         vynx::PayloadType::Phone, vynx::PayloadType::Sms,
-                        vynx::PayloadType::Geo};
+                        vynx::PayloadType::Geo, vynx::PayloadType::Event,
+                        vynx::PayloadType::Totp, vynx::PayloadType::Crypto,
+                        vynx::PayloadType::Payment};
     for (const auto kind : kinds) {
       if (kind != vynx::PayloadType::Text) window.setSpecialKind(kind);
       for (auto *edit : window.findChildren<QLineEdit *>()) {
@@ -148,7 +150,7 @@ private slots:
       }
     }
     QVERIFY(lineEdits >= 20);
-    QCOMPARE(multilineEdits, 3);
+    QCOMPARE(multilineEdits, 4);
     window.onBackToSmart();
     enter(smartInput(window), QStringLiteral("github.com"));
     window.copy_->setFocus();
@@ -453,6 +455,22 @@ private slots:
     QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.3"), QStringLiteral("1.1.3")));
     QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.2"), QStringLiteral("1.1.3")));
     QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.0.1"), QStringLiteral("1.1.3")));
+  }
+
+  void decodeQrCodeFromImage() {
+    MainWindow window;
+    present(window);
+
+    enter(smartInput(window), QStringLiteral("https://vynx.app/test"));
+    const auto result = window.currentResult();
+    QVERIFY(result.width > 0);
+
+    const vynx::Bitmap bitmap =
+        vynx::generate_bitmap(window.currentPayload(), window.currentOptions(512));
+    rust::Slice<const uint8_t> slice(bitmap.pixels.data(), bitmap.pixels.size());
+    const rust::String decoded =
+        vynx::decode_qr_rgba(slice, bitmap.width, bitmap.height);
+    QCOMPARE(bridgeString(decoded), QStringLiteral("https://vynx.app/test"));
   }
 
 private:

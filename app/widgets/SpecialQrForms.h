@@ -56,6 +56,10 @@ private:
   void buildPhoneForm();
   void buildSmsForm();
   void buildGeoForm();
+  void buildEventForm();
+  void buildTotpForm();
+  void buildCryptoForm();
+  void buildPaymentForm();
 
   void addBackButton();
   void markComplete();
@@ -97,4 +101,31 @@ private:
   QDoubleSpinBox *geoLatitude_ = nullptr;
   QDoubleSpinBox *geoLongitude_ = nullptr;
   QLineEdit *geoLabel_ = nullptr;
+
+  // Event (Calendar)
+  QLineEdit *eventTitle_ = nullptr;
+  QLineEdit *eventStart_ = nullptr;
+  QLineEdit *eventEnd_ = nullptr;
+  QLineEdit *eventLocation_ = nullptr;
+  QPlainTextEdit *eventDescription_ = nullptr;
+
+  // TOTP (2FA)
+  QLineEdit *totpSecret_ = nullptr;
+  QLineEdit *totpLabel_ = nullptr;
+  QLineEdit *totpIssuer_ = nullptr;
+
+  // Crypto
+  QComboBox *cryptoCurrency_ = nullptr;
+  QLineEdit *cryptoAddress_ = nullptr;
+  QLineEdit *cryptoAmount_ = nullptr;
+  QLineEdit *cryptoLabel_ = nullptr;
+
+  // Payment (SBP/GOST)
+  QLineEdit *paymentName_ = nullptr;
+  QLineEdit *paymentAcc_ = nullptr;
+  QLineEdit *paymentBank_ = nullptr;
+  QLineEdit *paymentBic_ = nullptr;
+  QLineEdit *paymentCorresp_ = nullptr;
+  QLineEdit *paymentSum_ = nullptr;
+  QLineEdit *paymentPurpose_ = nullptr;
 };

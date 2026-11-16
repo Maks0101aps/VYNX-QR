@@ -19,6 +19,8 @@ class AutoUpdater;
 class ClipboardSuggestion;
 class CustomizePanel;
 class QrPreview;
+class ScanResultDialog;
+class ScreenSnipper;
 class SettingsDialog;
 class SpecialQrForms;
 struct UpdateInfo;
@@ -55,6 +57,8 @@ public:
 
 protected:
   void closeEvent(QCloseEvent *event) override;
+  void dragEnterEvent(QDragEnterEvent *event) override;
+  void dropEvent(QDropEvent *event) override;
 
 private slots:
   void onSmartInputChanged();
@@ -68,6 +72,11 @@ private slots:
   void onOpenAbout();
   void onSaveAs();
   void onSpecialRequested();
+  void onScanMenuRequested();
+  void onStartScreenSnipping();
+  void onScanImageFile();
+  void onScanFromClipboard();
+  void onQrDecoded(const QString &text);
   void onBackToSmart();
   void onCustomizeToggled();
   void onLogoAdded();
@@ -161,8 +170,10 @@ private:
   QPushButton *clear_ = nullptr;
   QPushButton *customizeButton_ = nullptr;
   QPushButton *specialButton_ = nullptr;
+  QPushButton *scanButton_ = nullptr;
   QPushButton *settingsButton_ = nullptr;
   QPushButton *aboutButton_ = nullptr;
   QVBoxLayout *composerLayout_ = nullptr;
   AutoUpdater *autoUpdater_ = nullptr;
+  ScreenSnipper *snipper_ = nullptr;
 };

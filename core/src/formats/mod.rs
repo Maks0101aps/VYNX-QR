@@ -4,11 +4,15 @@
 //! the file system, the network or global state, which makes them trivial to
 //! unit test and keeps the QR pipeline free of side effects.
 
+pub mod crypto;
 pub mod email;
+pub mod event;
 pub mod geo;
+pub mod payment;
 pub mod phone;
 pub mod sms;
 pub mod text;
+pub mod totp;
 pub mod url;
 pub mod vcard;
 pub mod wifi;

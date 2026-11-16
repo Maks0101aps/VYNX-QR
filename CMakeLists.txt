@@ -209,6 +209,10 @@ add_executable(VYNX_QR WIN32
   app/widgets/CustomizePanel.h
   app/widgets/QrPreview.cpp
   app/widgets/QrPreview.h
+  app/widgets/ScanResultDialog.cpp
+  app/widgets/ScanResultDialog.h
+  app/widgets/ScreenSnipper.cpp
+  app/widgets/ScreenSnipper.h
   app/widgets/SettingsDialog.cpp
   app/widgets/SettingsDialog.h
   app/widgets/SpecialQrForms.cpp
@@ -298,6 +302,10 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
     app/widgets/CustomizePanel.h
     app/widgets/QrPreview.cpp
     app/widgets/QrPreview.h
+    app/widgets/ScanResultDialog.cpp
+    app/widgets/ScanResultDialog.h
+    app/widgets/ScreenSnipper.cpp
+    app/widgets/ScreenSnipper.h
     app/widgets/SettingsDialog.cpp
     app/widgets/SettingsDialog.h
     app/widgets/SpecialQrForms.cpp
