@@ -35,12 +35,33 @@ struct HttpResponse {
 };
 
 #ifdef Q_OS_WIN
-struct WinHttpHandleDeleter {
-  void operator()(HINTERNET h) const {
-    if (h) WinHttpCloseHandle(h);
+struct ScopedHINTERNET {
+  HINTERNET handle{nullptr};
+  ScopedHINTERNET() = default;
+  explicit ScopedHINTERNET(HINTERNET h) : handle(h) {}
+  ~ScopedHINTERNET() {
+    if (handle) WinHttpCloseHandle(handle);
+  }
+  ScopedHINTERNET(const ScopedHINTERNET &) = delete;
+  ScopedHINTERNET &operator=(const ScopedHINTERNET &) = delete;
+  ScopedHINTERNET(ScopedHINTERNET &&o) noexcept : handle(o.handle) {
+    o.handle = nullptr;
+  }
+  ScopedHINTERNET &operator=(ScopedHINTERNET &&o) noexcept {
+    if (this != &o) {
+      if (handle) WinHttpCloseHandle(handle);
+      handle = o.handle;
+      o.handle = nullptr;
+    }
+    return *this;
+  }
+  HINTERNET get() const { return handle; }
+  explicit operator bool() const { return handle != nullptr; }
+  void reset(HINTERNET h = nullptr) {
+    if (handle) WinHttpCloseHandle(handle);
+    handle = h;
   }
 };
-using ScopedHINTERNET = std::unique_ptr<void, WinHttpHandleDeleter>;
 
 HttpResponse httpGet(const QString &urlString) {
   HttpResponse resp;
@@ -258,7 +279,7 @@ HttpResponse httpGet(const QString &urlString) {
   HttpResponse resp;
   QNetworkAccessManager manager;
   QNetworkRequest request(QUrl(urlString));
-  request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("VYNX-QR-Updater"));
+  request.setRawHeader("User-Agent", "VYNX-QR-Updater");
   request.setRawHeader("Accept", "application/vnd.github.v3+json");
   request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
@@ -282,7 +303,7 @@ bool downloadFile(const QString &urlString, const QString &destPath,
                   QString &errorOut) {
   QNetworkAccessManager manager;
   QNetworkRequest request(QUrl(urlString));
-  request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("VYNX-QR-Updater"));
+  request.setRawHeader("User-Agent", "VYNX-QR-Updater");
   request.setRawHeader("Accept", "application/octet-stream");
   request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
