@@ -7,6 +7,7 @@
 class QCheckBox;
 class QComboBox;
 class QDialogButtonBox;
+class QLabel;
 class QPushButton;
 class QVBoxLayout;
 
