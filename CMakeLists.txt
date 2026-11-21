@@ -381,6 +381,7 @@ set(VYNX_RUST_SYSTEM_LIBS
   uuid        # COM interface identifiers
   dwmapi      # window chrome, used by the native integration
   winhttp     # Windows HTTP Services (auto-updater)
+  synchronization # Rust std sync (WaitOnAddress, WakeByAddressSingle)
 )
 else()
   find_package(Threads REQUIRED)
