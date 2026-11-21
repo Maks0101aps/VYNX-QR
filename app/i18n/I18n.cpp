@@ -167,6 +167,9 @@ const std::unordered_map<std::string_view, const char *> kRussian = {
 
     // SetupWindow & SetupBackend
     {"VYNX QR Setup", "Установка · VYNX QR"},
+    {"Setup · VYNX QR", "Установка · VYNX QR"},
+    {"Setup completed · VYNX QR", "Установка завершена · VYNX QR"},
+    {"Uninstall VYNX QR", "Удаление VYNX QR"},
     {"Welcome", "Приветствие"},
     {"Folder", "Выбор папки"},
     {"Installing", "Установка"},
@@ -387,6 +390,9 @@ const std::unordered_map<std::string_view, const char *> kUkrainian = {
 
     // SetupWindow & SetupBackend
     {"VYNX QR Setup", "Встановлення · VYNX QR"},
+    {"Setup · VYNX QR", "Встановлення · VYNX QR"},
+    {"Setup completed · VYNX QR", "Встановлення завершено · VYNX QR"},
+    {"Uninstall VYNX QR", "Видалення VYNX QR"},
     {"Welcome", "Вітання"},
     {"Folder", "Вибір папки"},
     {"Installing", "Встановлення"},

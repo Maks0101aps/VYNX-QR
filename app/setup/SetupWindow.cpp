@@ -276,7 +276,7 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
 }
 
 void SetupWindow::retranslateUi() {
-  setWindowTitle(I18n::tr("VYNX QR Setup"));
+  setWindowTitle(step_ == 3 ? I18n::tr("Setup completed · VYNX QR") : I18n::tr("Setup · VYNX QR"));
   if (welcomeTitle_) welcomeTitle_->setText(I18n::tr("Welcome to\nVYNX QR"));
   if (welcomeSub_) welcomeSub_->setText(I18n::tr("Fast. Private. Cross-platform."));
   if (welcomeDesc_) welcomeDesc_->setText(I18n::tr("Create and scan QR codes.\nNo account or internet connection required."));
@@ -297,7 +297,7 @@ void SetupWindow::retranslateUi() {
 
 void SetupWindow::setStep(int step) {
   step_ = step;
-  setWindowTitle(I18n::tr("VYNX QR Setup"));
+  setWindowTitle(step == 3 ? I18n::tr("Setup completed · VYNX QR") : I18n::tr("Setup · VYNX QR"));
   pages_->setCurrentIndex(step);
   const QStringList names = {I18n::tr("Welcome"), I18n::tr("Folder"),
                              I18n::tr("Installing"), I18n::tr("Completed")};
