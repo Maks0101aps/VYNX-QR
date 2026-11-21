@@ -13,7 +13,10 @@ pub fn encode(
 ) -> AppResult<String> {
     let secret = secret.trim().replace(' ', "").to_uppercase();
     if secret.is_empty() {
-        return Err(err_with(ErrorCode::EmptyInput, "TOTP secret key cannot be empty"));
+        return Err(err_with(
+            ErrorCode::EmptyInput,
+            "TOTP secret key cannot be empty",
+        ));
     }
 
     let label = label.trim();

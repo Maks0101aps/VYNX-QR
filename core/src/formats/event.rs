@@ -22,7 +22,10 @@ fn escape_ical(value: &str) -> String {
 /// Format an ISO date/time like "2026-11-20T10:00:00" into iCalendar format "20261120T100000Z".
 fn format_datetime(value: &str) -> String {
     let trimmed = value.trim();
-    let cleaned: String = trimmed.chars().filter(|c| c.is_ascii_digit() || *c == 'T' || *c == 'Z').collect();
+    let cleaned: String = trimmed
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == 'T' || *c == 'Z')
+        .collect();
     if cleaned.ends_with('Z') || cleaned.contains('T') {
         cleaned
     } else if !cleaned.is_empty() {
@@ -42,7 +45,10 @@ pub fn encode(
 ) -> AppResult<String> {
     let title = title.trim();
     if title.is_empty() {
-        return Err(err_with(ErrorCode::EmptyInput, "Event title cannot be empty"));
+        return Err(err_with(
+            ErrorCode::EmptyInput,
+            "Event title cannot be empty",
+        ));
     }
 
     let start_dt = format_datetime(start);
@@ -77,7 +83,14 @@ mod tests {
 
     #[test]
     fn event_basic() {
-        let res = encode("Team Meeting", "2026-11-20T10:00:00", "2026-11-20T11:00:00", "Room 101", "Weekly sync").unwrap();
+        let res = encode(
+            "Team Meeting",
+            "2026-11-20T10:00:00",
+            "2026-11-20T11:00:00",
+            "Room 101",
+            "Weekly sync",
+        )
+        .unwrap();
         assert!(res.contains("SUMMARY:Team Meeting"));
         assert!(res.contains("LOCATION:Room 101"));
         assert!(res.contains("BEGIN:VEVENT"));

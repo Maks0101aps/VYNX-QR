@@ -18,10 +18,16 @@ pub fn encode(
     let bic = bic.trim();
 
     if name.is_empty() {
-        return Err(err_with(ErrorCode::EmptyInput, "Recipient name cannot be empty"));
+        return Err(err_with(
+            ErrorCode::EmptyInput,
+            "Recipient name cannot be empty",
+        ));
     }
     if personal_acc.is_empty() {
-        return Err(err_with(ErrorCode::EmptyInput, "Personal account number cannot be empty"));
+        return Err(err_with(
+            ErrorCode::EmptyInput,
+            "Personal account number cannot be empty",
+        ));
     }
     if bank_name.is_empty() {
         return Err(err_with(ErrorCode::EmptyInput, "Bank name cannot be empty"));
@@ -30,7 +36,8 @@ pub fn encode(
         return Err(err_with(ErrorCode::EmptyInput, "BIC cannot be empty"));
     }
 
-    let mut out = format!("ST00012|Name={name}|PersonalAcc={personal_acc}|BankName={bank_name}|BIC={bic}");
+    let mut out =
+        format!("ST00012|Name={name}|PersonalAcc={personal_acc}|BankName={bank_name}|BIC={bic}");
 
     let corresp_acc = corresp_acc.trim();
     if !corresp_acc.is_empty() {
@@ -68,7 +75,8 @@ mod tests {
             "30101810400000000225",
             "1500.50",
             "Оплата услуг",
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(res.starts_with("ST00012|Name=ИП Иванов И.И.|PersonalAcc=40802810000000000001"));
         assert!(res.contains("|BIC=044525225"));

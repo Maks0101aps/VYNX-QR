@@ -7,7 +7,10 @@ use crate::formats::percent_encode;
 pub fn encode(currency: &str, address: &str, amount: &str, label: &str) -> AppResult<String> {
     let address = address.trim();
     if address.is_empty() {
-        return Err(err_with(ErrorCode::EmptyInput, "Cryptocurrency address cannot be empty"));
+        return Err(err_with(
+            ErrorCode::EmptyInput,
+            "Cryptocurrency address cannot be empty",
+        ));
     }
 
     let currency = currency.trim().to_lowercase();
@@ -63,13 +66,31 @@ mod tests {
 
     #[test]
     fn btc_encode() {
-        let uri = encode("btc", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "0.05", "Donation").unwrap();
-        assert_eq!(uri, "bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa?amount=0.05&label=Donation");
+        let uri = encode(
+            "btc",
+            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+            "0.05",
+            "Donation",
+        )
+        .unwrap();
+        assert_eq!(
+            uri,
+            "bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa?amount=0.05&label=Donation"
+        );
     }
 
     #[test]
     fn ton_encode() {
-        let uri = encode("ton", "EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N", "10", "Coffee").unwrap();
-        assert_eq!(uri, "ton://transfer/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N?amount=10&text=Coffee");
+        let uri = encode(
+            "ton",
+            "EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N",
+            "10",
+            "Coffee",
+        )
+        .unwrap();
+        assert_eq!(
+            uri,
+            "ton://transfer/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N?amount=10&text=Coffee"
+        );
     }
 }

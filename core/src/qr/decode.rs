@@ -53,7 +53,10 @@ pub fn decode_rgba(width: u32, height: u32, rgba: &[u8]) -> AppResult<String> {
 /// Decode a QR code from raw encoded image bytes (PNG, JPEG, WebP).
 pub fn decode_bytes(bytes: &[u8]) -> AppResult<String> {
     let img = image::load_from_memory(bytes).map_err(|e| {
-        err_with(ErrorCode::LogoDecodeFailed, format!("Failed to read image: {e}"))
+        err_with(
+            ErrorCode::LogoDecodeFailed,
+            format!("Failed to read image: {e}"),
+        )
     })?;
 
     let luma = img.to_luma8();

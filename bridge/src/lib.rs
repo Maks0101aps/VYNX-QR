@@ -366,9 +366,9 @@ pub mod ffi {
 
 use ffi::{
     Analysis, Bitmap, ContentKind, CryptoPayload, EcLevel, EmailPayload, EventPayload,
-    ExportFormat, GenerateResult, GeoPayload, Logo, LogoAsset, ModuleStyle, PaymentPayload,
-    Payload, PayloadType, RenderOptions, Settings, SmartPayload, SmsPayload, SystemInfo,
-    ThemeMode, TotpPayload, VCardPayload, VerifyStatus, Warning, WifiPayload, WifiSecurity,
+    ExportFormat, GenerateResult, GeoPayload, Logo, LogoAsset, ModuleStyle, Payload, PayloadType,
+    PaymentPayload, RenderOptions, Settings, SmartPayload, SmsPayload, SystemInfo, ThemeMode,
+    TotpPayload, VCardPayload, VerifyStatus, Warning, WifiPayload, WifiSecurity,
 };
 
 /// Wrap a core call so that a panic becomes an error instead of unwinding into
