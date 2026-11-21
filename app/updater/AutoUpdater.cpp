@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QTextStream>
 #include <QThread>
 
 #include "platform/PlatformIntegration.h"
@@ -502,12 +503,31 @@ void AutoUpdater::installAndRestart(const QString &installerPath) {
   const QString nativeApp = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
   const QString nativeSetup = QDir::toNativeSeparators(installerPath);
 
-  // NSIS per-user installer runs silently with /S.
-  // Wait 1s so the current process exits and releases file locks, run installer, then start updated app.
-  const QString cmd = QStringLiteral("timeout /t 1 /nobreak >nul & start \"\" /wait \"%1\" /S & start \"\" \"%2\"")
-                          .arg(nativeSetup, nativeApp);
+  // Write a standalone batch script to %TEMP% to avoid any cmd.exe argument escaping/quoting bugs
+  const QString batPath = QDir(QDir::tempPath()).filePath(QStringLiteral("vynx_updater.cmd"));
+  QFile batFile(batPath);
+  if (batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QTextStream out(&batFile);
+    out << "@echo off\r\n";
+    out << "chcp 65001 >nul\r\n";
+    // Wait for the running application to exit and release file locks
+    out << "ping 127.0.0.1 -n 3 >nul\r\n";
+    // Launch installer and wait for it to finish
+    out << "start \"\" /wait \"" << nativeSetup << "\" /S\r\n";
+    // Restart updated application
+    out << "if exist \"" << nativeApp << "\" (\r\n";
+    out << "    start \"\" \"" << nativeApp << "\"\r\n";
+    out << ") else (\r\n";
+    out << "    start \"\" \"%LOCALAPPDATA%\\Programs\\VYNX QR\\VYNX QR.exe\"\r\n";
+    out << ")\r\n";
+    out << "del \"%~f0\"\r\n";
+    batFile.close();
 
-  QProcess::startDetached(QStringLiteral("cmd.exe"), {QStringLiteral("/C"), cmd});
+    QProcess::startDetached(QStringLiteral("cmd.exe"), {QStringLiteral("/C"), QDir::toNativeSeparators(batPath)});
+  } else {
+    // Fallback: direct launch
+    QProcess::startDetached(installerPath, {QStringLiteral("/S")});
+  }
   QApplication::quit();
   std::exit(0);
 #else
