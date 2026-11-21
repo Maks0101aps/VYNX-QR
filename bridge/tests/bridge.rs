@@ -49,6 +49,35 @@ fn text_payload(text: &str) -> Payload {
                 longitude: 0.0,
                 label: String::new(),
             },
+            event: EventPayload {
+                title: String::new(),
+                start: String::new(),
+                end: String::new(),
+                location: String::new(),
+                description: String::new(),
+            },
+            totp: TotpPayload {
+                secret: String::new(),
+                label: String::new(),
+                issuer: String::new(),
+                digits: 6,
+                period: 30,
+            },
+            crypto: CryptoPayload {
+                currency: String::new(),
+                address: String::new(),
+                amount: String::new(),
+                label: String::new(),
+            },
+            payment: PaymentPayload {
+                name: String::new(),
+                personal_acc: String::new(),
+                bank_name: String::new(),
+                bic: String::new(),
+                corresp_acc: String::new(),
+                sum: String::new(),
+                purpose: String::new(),
+            },
         }
     }
 }

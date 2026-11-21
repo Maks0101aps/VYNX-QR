@@ -14,6 +14,7 @@
 
 #include "Bridge.h"
 #include "Theme.h"
+#include "i18n/I18n.h"
 
 namespace {
 
@@ -52,6 +53,10 @@ SpecialQrForms::SpecialQrForms(QWidget *parent) : QWidget(parent) {
   buildPhoneForm();
   buildSmsForm();
   buildGeoForm();
+  buildEventForm();
+  buildTotpForm();
+  buildCryptoForm();
+  buildPaymentForm();
 
   auto *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -84,6 +89,10 @@ void SpecialQrForms::showKind(vynx::PayloadType kind) {
   case vynx::PayloadType::Phone: index = 3; break;
   case vynx::PayloadType::Sms: index = 4; break;
   case vynx::PayloadType::Geo: index = 5; break;
+  case vynx::PayloadType::Event: index = 6; break;
+  case vynx::PayloadType::Totp: index = 7; break;
+  case vynx::PayloadType::Crypto: index = 8; break;
+  case vynx::PayloadType::Payment: index = 9; break;
   default:
     // An unrecognised kind has no form to show, so there is nothing to switch to.
     return;
@@ -112,6 +121,16 @@ bool SpecialQrForms::isComplete() const {
            !vcardEmail_->text().trimmed().isEmpty();
   case vynx::PayloadType::Geo:
     return true;
+  case vynx::PayloadType::Event:
+    return !eventTitle_->text().trimmed().isEmpty();
+  case vynx::PayloadType::Totp:
+    return !totpSecret_->text().trimmed().isEmpty();
+  case vynx::PayloadType::Crypto:
+    return !cryptoAddress_->text().trimmed().isEmpty();
+  case vynx::PayloadType::Payment:
+    return !paymentName_->text().trimmed().isEmpty() &&
+           !paymentAcc_->text().trimmed().isEmpty() &&
+           !paymentBic_->text().trimmed().isEmpty();
   default:
     return false;
   }
@@ -159,6 +178,35 @@ vynx::Payload SpecialQrForms::payload() const {
     payload.geo.latitude = geoLatitude_->value();
     payload.geo.longitude = geoLongitude_->value();
     payload.geo.label = vynxq::toRust(geoLabel_->text());
+    break;
+  case vynx::PayloadType::Event:
+    payload.event.title = vynxq::toRust(eventTitle_->text());
+    payload.event.start = vynxq::toRust(eventStart_->text());
+    payload.event.end = vynxq::toRust(eventEnd_->text());
+    payload.event.location = vynxq::toRust(eventLocation_->text());
+    payload.event.description = vynxq::toRust(eventDescription_->toPlainText());
+    break;
+  case vynx::PayloadType::Totp:
+    payload.totp.secret = vynxq::toRust(totpSecret_->text());
+    payload.totp.label = vynxq::toRust(totpLabel_->text());
+    payload.totp.issuer = vynxq::toRust(totpIssuer_->text());
+    payload.totp.digits = 6;
+    payload.totp.period = 30;
+    break;
+  case vynx::PayloadType::Crypto:
+    payload.crypto.currency = vynxq::toRust(cryptoCurrency_->currentText().toLower());
+    payload.crypto.address = vynxq::toRust(cryptoAddress_->text());
+    payload.crypto.amount = vynxq::toRust(cryptoAmount_->text());
+    payload.crypto.label = vynxq::toRust(cryptoLabel_->text());
+    break;
+  case vynx::PayloadType::Payment:
+    payload.payment.name = vynxq::toRust(paymentName_->text());
+    payload.payment.personal_acc = vynxq::toRust(paymentAcc_->text());
+    payload.payment.bank_name = vynxq::toRust(paymentBank_->text());
+    payload.payment.bic = vynxq::toRust(paymentBic_->text());
+    payload.payment.corresp_acc = vynxq::toRust(paymentCorresp_->text());
+    payload.payment.sum = vynxq::toRust(paymentSum_->text());
+    payload.payment.purpose = vynxq::toRust(paymentPurpose_->text());
     break;
   default:
     break;
@@ -353,6 +401,142 @@ void SpecialQrForms::buildGeoForm() {
   connect(geoLatitude_, &QDoubleSpinBox::valueChanged, this, &SpecialQrForms::markComplete);
   connect(geoLongitude_, &QDoubleSpinBox::valueChanged, this, &SpecialQrForms::markComplete);
   connect(geoLabel_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+
+  stack_->addWidget(page);
+}
+
+void SpecialQrForms::buildEventForm() {
+  auto *page = new QWidget;
+  auto *layout = new QVBoxLayout(page);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(Tokens::SpaceMedium);
+
+  eventTitle_ = new QLineEdit;
+  eventTitle_->setPlaceholderText(I18n::tr("Team Meeting / Sync"));
+  layout->addWidget(field(I18n::tr("Event title"), eventTitle_));
+
+  eventStart_ = new QLineEdit;
+  eventStart_->setPlaceholderText(QStringLiteral("20261116T120000Z"));
+  layout->addWidget(field(I18n::tr("Start time (YYYYMMDDTHHMMSSZ)"), eventStart_));
+
+  eventEnd_ = new QLineEdit;
+  eventEnd_->setPlaceholderText(QStringLiteral("20261116T130000Z"));
+  layout->addWidget(field(I18n::tr("End time (YYYYMMDDTHHMMSSZ)"), eventEnd_));
+
+  eventLocation_ = new QLineEdit;
+  eventLocation_->setPlaceholderText(I18n::tr("Conference Room / Online"));
+  layout->addWidget(field(I18n::tr("Location"), eventLocation_));
+
+  eventDescription_ = new QPlainTextEdit;
+  eventDescription_->setMinimumHeight(80);
+  layout->addWidget(field(I18n::tr("Description"), eventDescription_));
+
+  connect(eventTitle_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(eventStart_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(eventEnd_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(eventLocation_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(eventDescription_, &QPlainTextEdit::textChanged, this, &SpecialQrForms::markComplete);
+
+  stack_->addWidget(page);
+}
+
+void SpecialQrForms::buildTotpForm() {
+  auto *page = new QWidget;
+  auto *layout = new QVBoxLayout(page);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(Tokens::SpaceMedium);
+
+  totpSecret_ = new QLineEdit;
+  totpSecret_->setPlaceholderText(QStringLiteral("JBSWY3DPEHPK3PXP"));
+  layout->addWidget(field(I18n::tr("Secret key (Base32)"), totpSecret_,
+                         I18n::tr("Used to generate two-factor authentication codes.")));
+
+  totpLabel_ = new QLineEdit;
+  totpLabel_->setPlaceholderText(QStringLiteral("user@example.com"));
+  layout->addWidget(field(I18n::tr("Account / Username"), totpLabel_));
+
+  totpIssuer_ = new QLineEdit;
+  totpIssuer_->setPlaceholderText(QStringLiteral("GitHub / Google / VYNX"));
+  layout->addWidget(field(I18n::tr("Service (Issuer)"), totpIssuer_));
+
+  connect(totpSecret_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(totpLabel_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(totpIssuer_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+
+  stack_->addWidget(page);
+}
+
+void SpecialQrForms::buildCryptoForm() {
+  auto *page = new QWidget;
+  auto *layout = new QVBoxLayout(page);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(Tokens::SpaceMedium);
+
+  cryptoCurrency_ = new QComboBox;
+  cryptoCurrency_->addItems({QStringLiteral("Bitcoin"), QStringLiteral("Ethereum"), QStringLiteral("TON"), QStringLiteral("USDT")});
+  layout->addWidget(field(I18n::tr("Cryptocurrency"), cryptoCurrency_));
+
+  cryptoAddress_ = new QLineEdit;
+  cryptoAddress_->setPlaceholderText(QStringLiteral("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa / 0x... / EQ..."));
+  layout->addWidget(field(I18n::tr("Wallet address"), cryptoAddress_));
+
+  cryptoAmount_ = new QLineEdit;
+  cryptoAmount_->setPlaceholderText(QStringLiteral("0.05"));
+  layout->addWidget(field(I18n::tr("Amount (optional)"), cryptoAmount_));
+
+  cryptoLabel_ = new QLineEdit;
+  cryptoLabel_->setPlaceholderText(QStringLiteral("Donation / Order #42"));
+  layout->addWidget(field(I18n::tr("Label / Message"), cryptoLabel_));
+
+  connect(cryptoCurrency_, &QComboBox::currentIndexChanged, this, &SpecialQrForms::markComplete);
+  connect(cryptoAddress_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(cryptoAmount_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(cryptoLabel_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+
+  stack_->addWidget(page);
+}
+
+void SpecialQrForms::buildPaymentForm() {
+  auto *page = new QWidget;
+  auto *layout = new QVBoxLayout(page);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(Tokens::SpaceMedium);
+
+  paymentName_ = new QLineEdit;
+  paymentName_->setPlaceholderText(QStringLiteral("Example LLC / John Doe"));
+  layout->addWidget(field(I18n::tr("Recipient name"), paymentName_));
+
+  paymentAcc_ = new QLineEdit;
+  paymentAcc_->setPlaceholderText(QStringLiteral("40702810938000012345"));
+  layout->addWidget(field(I18n::tr("Recipient account number"), paymentAcc_));
+
+  paymentBank_ = new QLineEdit;
+  paymentBank_->setPlaceholderText(QStringLiteral("Bank Name"));
+  layout->addWidget(field(I18n::tr("Bank name"), paymentBank_));
+
+  paymentBic_ = new QLineEdit;
+  paymentBic_->setPlaceholderText(QStringLiteral("044525225"));
+  layout->addWidget(field(I18n::tr("Bank BIC"), paymentBic_));
+
+  paymentCorresp_ = new QLineEdit;
+  paymentCorresp_->setPlaceholderText(QStringLiteral("30101810400000000225"));
+  layout->addWidget(field(I18n::tr("Correspondent account"), paymentCorresp_));
+
+  paymentSum_ = new QLineEdit;
+  paymentSum_->setPlaceholderText(QStringLiteral("1500.00"));
+  layout->addWidget(field(I18n::tr("Amount (optional)"), paymentSum_));
+
+  paymentPurpose_ = new QLineEdit;
+  paymentPurpose_->setPlaceholderText(QStringLiteral("Invoice #10 payment"));
+  layout->addWidget(field(I18n::tr("Payment purpose"), paymentPurpose_));
+
+  connect(paymentName_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(paymentAcc_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(paymentBank_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(paymentBic_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(paymentCorresp_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(paymentSum_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
+  connect(paymentPurpose_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
 
   stack_->addWidget(page);
 }

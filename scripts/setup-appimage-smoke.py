@@ -56,7 +56,7 @@ def main():
             env = os.environ | {'HOME': str(root), 'XDG_DATA_HOME': str(root / 'data'),
                                 'XDG_CONFIG_HOME': str(root / 'config')}
             process = subprocess.Popen([str(image)], env=env)
-            wid = window('Установка · VYNX QR', process)
+            wid = window(r'(Setup · VYNX QR|Установка · VYNX QR|Встановлення · VYNX QR)', process)
             run('xdotool', 'windowactivate', '--sync', wid)
             run('import', '-window', wid, str(args.report.with_suffix('.welcome.png')))
             run('xdotool', 'key', '--clearmodifiers', 'Return')
@@ -72,7 +72,7 @@ def main():
             installed = destination / 'vynx-qr.AppImage'
             assert hashlib.sha256(installed.read_bytes()).hexdigest() == digest
             run('desktop-file-validate', str(desktop))
-            wid = window('Установка завершена · VYNX QR', process)
+            wid = window(r'(Setup completed · VYNX QR|Установка завершена · VYNX QR|Встановлення завершено · VYNX QR)', process)
             run('import', '-window', wid, str(args.report.with_suffix('.finish.png')))
             run('xdotool', 'windowactivate', '--sync', wid)
             run('xdotool', 'key', '--clearmodifiers', 'alt+r')
@@ -95,7 +95,7 @@ def main():
                 'from gi.repository import Gio; import sys; '
                 'Gio.DesktopAppInfo.new_from_filename(sys.argv[1]).launch_action("Uninstall", None)',
                 str(desktop)], env=env)
-            wid = window('Удаление VYNX QR', process)
+            wid = window(r'(Uninstall VYNX QR|Удаление VYNX QR|Видалення VYNX QR)', process)
             run('xdotool', 'windowactivate', '--sync', wid)
             run('xdotool', 'key', '--clearmodifiers', 'alt+y')
             wid = window('^VYNX QR$', process)

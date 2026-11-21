@@ -9,6 +9,7 @@
 
 #include "MainWindow.h"
 #include "Theme.h"
+#include "i18n/I18n.h"
 #include "platform/PlatformIntegration.h"
 
 static void setupOptions(QCommandLineParser &parser) {
@@ -71,14 +72,14 @@ int main(int argc, char *argv[]) {
 #ifdef Q_OS_LINUX
     const auto directory = QFileInfo(appImage).absolutePath();
     if (appImage.isEmpty()) return 1;
-    if (QMessageBox::question(nullptr, QStringLiteral("Удаление VYNX QR"),
-          QStringLiteral("Удалить VYNX QR и ярлык из меню приложений? Ваши настройки сохранятся.")) != QMessageBox::Yes) return 0;
+    if (QMessageBox::question(nullptr, I18n::tr("Uninstall VYNX QR"),
+          I18n::tr("Uninstall VYNX QR and shortcut from applications menu? Your settings will be preserved.")) != QMessageBox::Yes) return 0;
     QString error;
     if (!SetupBackend::uninstallLinux(directory, &error)) {
-      QMessageBox::warning(nullptr, QStringLiteral("Удаление VYNX QR"), error);
+      QMessageBox::warning(nullptr, I18n::tr("Uninstall VYNX QR"), error);
       return 1;
     }
-    QMessageBox::information(nullptr, QStringLiteral("VYNX QR"), QStringLiteral("Приложение удалено."));
+    QMessageBox::information(nullptr, QStringLiteral("VYNX QR"), I18n::tr("Application uninstalled."));
     return 0;
 #else
     return 1;

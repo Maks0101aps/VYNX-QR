@@ -1,6 +1,7 @@
 #include "SetupWindow.h"
 #include <QCheckBox>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QDir>
 #include <QFileDialog>
 #include <QFile>
@@ -16,6 +17,7 @@
 #include <QStyle>
 #include <QShortcut>
 #include <QVBoxLayout>
+#include "i18n/I18n.h"
 
 namespace {
 QLabel *label(const QString &text, const char *name, Qt::Alignment alignment = Qt::AlignLeft) {
@@ -41,7 +43,8 @@ QLabel *logo() {
 
 SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
     : QWidget(parent), backend_(payload, this) {
-  setWindowTitle(QStringLiteral("Установка · VYNX QR"));
+  I18n::instance().setLanguage(I18n::Language::English);
+  setWindowTitle(I18n::tr("VYNX QR Setup"));
   resize(760, 510);
   setMinimumSize(720, 500);
   setObjectName(QStringLiteral("setup"));
@@ -63,6 +66,9 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
     QLabel#success { color: #8eb5ff; font-size: 38px; }
     QLineEdit { background: #101e32; border: 1px solid #3c506e; border-radius: 6px; padding: 10px; selection-background-color: #1761f5; }
     QLineEdit:focus { border: 1px solid #6da1ff; }
+    QComboBox { background: #101e32; border: 1px solid #3c506e; border-radius: 6px; padding: 6px 10px; color: #edf3ff; }
+    QComboBox:focus { border: 1px solid #6da1ff; }
+    QComboBox QAbstractItemView { background: #101e32; color: #edf3ff; selection-background-color: #1761f5; }
     QPushButton { border: 1px solid #34465f; border-radius: 6px; padding: 10px 18px; background: #142238; }
     QPushButton:hover { background: #203756; border-color: #6583ac; }
     QPushButton:focus { border: 2px solid #9cc0ff; padding: 9px 17px; }
@@ -91,11 +97,21 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   smallIcon->setPixmap(QPixmap(QStringLiteral(":/icons/vynx-qr.png")).scaled(27, 27, Qt::KeepAspectRatio, Qt::SmoothTransformation));
   brand->addWidget(smallIcon);
   brand->addSpacing(5);
-  brand->addWidget(label(QStringLiteral("VYNX QR"), "brand"), 1);
+  auto *brandLabel = label(QStringLiteral("VYNX QR"), "brand");
+  brand->addWidget(brandLabel, 1);
   railLayout->addLayout(brand);
-  railLayout->addSpacing(34);
-  const QStringList names = {QStringLiteral("Приветствие"), QStringLiteral("Выбор папки"),
-                             QStringLiteral("Установка"), QStringLiteral("Завершение")};
+  railLayout->addSpacing(16);
+
+  langCombo_ = new QComboBox;
+  langCombo_->addItem(QStringLiteral("English"));
+  langCombo_->addItem(QStringLiteral("Русский"));
+  langCombo_->addItem(QStringLiteral("Українська"));
+  langCombo_->setCurrentIndex(0);
+  railLayout->addWidget(langCombo_);
+  railLayout->addSpacing(18);
+
+  const QStringList names = {I18n::tr("Welcome"), I18n::tr("Folder"),
+                             I18n::tr("Installing"), I18n::tr("Completed")};
   for (int i = 0; i < 4; ++i) {
     steps_[i] = label(names[i], "step");
     railLayout->addWidget(steps_[i]);
@@ -113,39 +129,46 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   welcomeLayout->addStretch();
   welcomeLayout->addWidget(logo());
   welcomeLayout->addSpacing(17);
-  welcomeLayout->addWidget(label(QStringLiteral("Добро пожаловать в\nVYNX QR"), "title", Qt::AlignCenter));
+  welcomeTitle_ = label(I18n::tr("Welcome to\nVYNX QR"), "title", Qt::AlignCenter);
+  welcomeLayout->addWidget(welcomeTitle_);
   welcomeLayout->addSpacing(6);
-  welcomeLayout->addWidget(label(QStringLiteral("Быстрый. Приватный. Кроссплатформенный."), "body", Qt::AlignCenter));
+  welcomeSub_ = label(I18n::tr("Fast. Private. Cross-platform."), "body", Qt::AlignCenter);
+  welcomeLayout->addWidget(welcomeSub_);
   welcomeLayout->addSpacing(16);
-  welcomeLayout->addWidget(label(QStringLiteral("Создавайте и считывайте QR-коды.\nБез аккаунта и подключения к интернету."), "body", Qt::AlignCenter));
+  welcomeDesc_ = label(I18n::tr("Create and scan QR codes.\nNo account or internet connection required."), "body", Qt::AlignCenter);
+  welcomeLayout->addWidget(welcomeDesc_);
   welcomeLayout->addStretch();
   pages_->addWidget(welcome);
 
   auto *folderPage = new QWidget;
   auto *folderLayout = new QVBoxLayout(folderPage);
   folderLayout->setContentsMargins(0, 22, 0, 0);
-  folderLayout->addWidget(label(QStringLiteral("Где установить\nVYNX QR?"), "title"));
+  folderTitle_ = label(I18n::tr("Where to install\nVYNX QR?"), "title");
+  folderLayout->addWidget(folderTitle_);
   folderLayout->addSpacing(8);
-  folderLayout->addWidget(label(QStringLiteral("Приложение будет доступно только вам.\nПрава администратора не нужны."), "body"));
+  folderSub_ = label(I18n::tr("The application will be installed for your user only.\nAdministrator rights are not required."), "body");
+  folderLayout->addWidget(folderSub_);
   folderLayout->addSpacing(23);
-  folderLayout->addWidget(label(QStringLiteral("Папка установки"), "brand"));
+  folderLabel_ = label(I18n::tr("Installation folder"), "brand");
+  folderLayout->addWidget(folderLabel_);
   folder_ = new QLineEdit(QDir::toNativeSeparators(SetupBackend::defaultDirectory()));
   folder_->setObjectName(QStringLiteral("folder"));
-  folder_->setAccessibleName(QStringLiteral("Папка установки"));
+  folder_->setAccessibleName(I18n::tr("Installation folder"));
   folderLayout->addWidget(folder_);
-  auto *browse = new QPushButton(QStringLiteral("Выбрать папку…"));
-  folderLayout->addWidget(browse, 0, Qt::AlignLeft);
+  browseBtn_ = new QPushButton(I18n::tr("Browse…"));
+  folderLayout->addWidget(browseBtn_, 0, Qt::AlignLeft);
   pathError_ = label({}, "error");
   folderLayout->addWidget(pathError_);
   folderLayout->addStretch();
-  folderLayout->addWidget(label(QStringLiteral("Продолжая установку, вы принимаете лицензию VYNX QR.\nТексты лицензий приложения и компонентов входят в пакет."), "footnote"));
-  auto *license = new QPushButton(QStringLiteral("Прочитать лицензию"));
-  folderLayout->addWidget(license, 0, Qt::AlignLeft);
-  connect(license, &QPushButton::clicked, this, [this] {
+  licenseFootnote_ = label(I18n::tr("By continuing, you accept the VYNX QR license.\nLicense texts are included in the package."), "footnote");
+  folderLayout->addWidget(licenseFootnote_);
+  licenseBtn_ = new QPushButton(I18n::tr("View license"));
+  folderLayout->addWidget(licenseBtn_, 0, Qt::AlignLeft);
+  connect(licenseBtn_, &QPushButton::clicked, this, [this] {
     QFile file(QStringLiteral(":/setup/LICENSE"));
     if (file.open(QIODevice::ReadOnly)) {
-      QMessageBox box(QMessageBox::Information, QStringLiteral("Лицензия VYNX QR"),
-                      QStringLiteral("VYNX QR · условия использования"), QMessageBox::Ok, this);
+      QMessageBox box(QMessageBox::Information, I18n::tr("VYNX QR License"),
+                      I18n::tr("VYNX QR · Terms of Use"), QMessageBox::Ok, this);
       box.setDetailedText(QString::fromUtf8(file.readAll()));
       box.exec();
     }
@@ -157,12 +180,12 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   installLayout->addStretch();
   installLayout->addWidget(logo());
   installLayout->addSpacing(22);
-  status_ = label(QStringLiteral("Устанавливаем VYNX QR"), "title", Qt::AlignCenter);
+  status_ = label(I18n::tr("Installing VYNX QR"), "title", Qt::AlignCenter);
   installLayout->addWidget(status_);
   installLayout->addSpacing(12);
   progress_ = new QProgressBar;
   progress_->setTextVisible(false);
-  progress_->setAccessibleName(QStringLiteral("Ход установки"));
+  progress_->setAccessibleName(I18n::tr("Installing VYNX QR"));
   installLayout->addWidget(progress_);
   destination_ = label({}, "destination", Qt::AlignCenter);
   installLayout->addWidget(destination_);
@@ -177,11 +200,13 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   finishLayout->addStretch();
   finishLayout->addWidget(label(QStringLiteral("✓"), "success", Qt::AlignCenter));
   finishLayout->addSpacing(16);
-  finishLayout->addWidget(label(QStringLiteral("Всё готово!"), "title", Qt::AlignCenter));
+  finishTitle_ = label(I18n::tr("All done!"), "title", Qt::AlignCenter);
+  finishLayout->addWidget(finishTitle_);
   finishLayout->addSpacing(8);
-  finishLayout->addWidget(label(QStringLiteral("VYNX QR установлен.\nПриложение уже в вашем меню приложений."), "body", Qt::AlignCenter));
+  finishSub_ = label(I18n::tr("VYNX QR has been installed.\nThe shortcut is in your applications menu."), "body", Qt::AlignCenter);
+  finishLayout->addWidget(finishSub_);
   finishLayout->addSpacing(24);
-  launch_ = new QCheckBox(QStringLiteral("Запустить VYNX QR"));
+  launch_ = new QCheckBox(I18n::tr("Launch VYNX QR"));
   launch_->setShortcut(QKeySequence(QStringLiteral("Alt+R")));
   launch_->setChecked(true);
   finishLayout->addWidget(launch_, 0, Qt::AlignHCenter);
@@ -189,9 +214,9 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   pages_->addWidget(finishPage);
   content->addWidget(pages_, 1);
   auto *buttons = new QHBoxLayout;
-  back_ = new QPushButton(QStringLiteral("Назад"));
+  back_ = new QPushButton(I18n::tr("Back"));
   back_->setObjectName(QStringLiteral("back"));
-  cancel_ = new QPushButton(QStringLiteral("Отмена"));
+  cancel_ = new QPushButton(I18n::tr("Cancel"));
   cancel_->setObjectName(QStringLiteral("cancel"));
   next_ = new QPushButton;
   next_->setObjectName(QStringLiteral("next"));
@@ -201,7 +226,8 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   buttons->addStretch();
   buttons->addWidget(next_);
   content->addLayout(buttons);
-  content->addWidget(label(QStringLiteral("Версия %1").arg(QStringLiteral(VYNX_VERSION)), "footnote", Qt::AlignRight));
+  versionLabel_ = label(I18n::tr("Version %1").arg(QStringLiteral(VYNX_VERSION)), "footnote", Qt::AlignRight);
+  content->addWidget(versionLabel_);
   root->addLayout(content, 1);
   connect(next_, &QPushButton::clicked, this, &SetupWindow::advance);
   connect(new QShortcut(QKeySequence(Qt::Key_Return), this), &QShortcut::activated, this,
@@ -211,14 +237,24 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
           [this] { if (step_ == 1) { folder_->setFocus(); folder_->selectAll(); } });
   connect(back_, &QPushButton::clicked, this, [this] { setStep(step_ == 2 ? 1 : 0); });
   connect(cancel_, &QPushButton::clicked, this, &QWidget::close);
-  connect(browse, &QPushButton::clicked, this, [this] {
-    const auto path = QFileDialog::getExistingDirectory(this, QStringLiteral("Папка установки"), folder_->text());
+  connect(browseBtn_, &QPushButton::clicked, this, [this] {
+    const auto path = QFileDialog::getExistingDirectory(this, I18n::tr("Installation folder"), folder_->text());
     if (!path.isEmpty()) folder_->setText(QDir::toNativeSeparators(path));
   });
   connect(folder_, &QLineEdit::textChanged, this, [this] {
     const auto error = SetupBackend::pathError(folder_->text());
     pathError_->setText(error);
     if (step_ == 1) next_->setEnabled(error.isEmpty());
+  });
+  connect(langCombo_, &QComboBox::currentIndexChanged, this, [this](int index) {
+    if (index == 1) {
+      I18n::instance().setLanguage(I18n::Language::Russian);
+    } else if (index == 2) {
+      I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    } else {
+      I18n::instance().setLanguage(I18n::Language::English);
+    }
+    retranslateUi();
   });
   connect(&backend_, &SetupBackend::progress, this, [this](int value) {
     progress_->setRange(0, value < 0 ? 0 : 100);
@@ -229,9 +265,9 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
     if (success) { setStep(3); return; }
     progress_->setRange(0, 100);
     progress_->setValue(0);
-    status_->setText(QStringLiteral("Установка прервана"));
+    status_->setText(I18n::tr("Installation interrupted"));
     error_->setText(error);
-    next_->setText(QStringLiteral("Повторить"));
+    next_->setText(I18n::tr("Retry"));
     next_->setEnabled(true);
     back_->show();
     cancel_->setEnabled(true);
@@ -239,13 +275,33 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   setStep(0);
 }
 
+void SetupWindow::retranslateUi() {
+  setWindowTitle(step_ == 3 ? I18n::tr("Setup completed · VYNX QR") : I18n::tr("Setup · VYNX QR"));
+  if (welcomeTitle_) welcomeTitle_->setText(I18n::tr("Welcome to\nVYNX QR"));
+  if (welcomeSub_) welcomeSub_->setText(I18n::tr("Fast. Private. Cross-platform."));
+  if (welcomeDesc_) welcomeDesc_->setText(I18n::tr("Create and scan QR codes.\nNo account or internet connection required."));
+  if (folderTitle_) folderTitle_->setText(I18n::tr("Where to install\nVYNX QR?"));
+  if (folderSub_) folderSub_->setText(I18n::tr("The application will be installed for your user only.\nAdministrator rights are not required."));
+  if (folderLabel_) folderLabel_->setText(I18n::tr("Installation folder"));
+  if (browseBtn_) browseBtn_->setText(I18n::tr("Browse…"));
+  if (licenseFootnote_) licenseFootnote_->setText(I18n::tr("By continuing, you accept the VYNX QR license.\nLicense texts are included in the package."));
+  if (licenseBtn_) licenseBtn_->setText(I18n::tr("View license"));
+  if (finishTitle_) finishTitle_->setText(I18n::tr("All done!"));
+  if (finishSub_) finishSub_->setText(I18n::tr("VYNX QR has been installed.\nThe shortcut is in your applications menu."));
+  if (launch_) launch_->setText(I18n::tr("Launch VYNX QR"));
+  if (back_) back_->setText(I18n::tr("Back"));
+  if (cancel_) cancel_->setText(I18n::tr("Cancel"));
+  if (versionLabel_) versionLabel_->setText(I18n::tr("Version %1").arg(QStringLiteral(VYNX_VERSION)));
+  setStep(step_);
+}
+
 void SetupWindow::setStep(int step) {
   step_ = step;
-  setWindowTitle(step == 3 ? QStringLiteral("Установка завершена · VYNX QR") : QStringLiteral("Установка · VYNX QR"));
+  setWindowTitle(step == 3 ? I18n::tr("Setup completed · VYNX QR") : I18n::tr("Setup · VYNX QR"));
   pages_->setCurrentIndex(step);
+  const QStringList names = {I18n::tr("Welcome"), I18n::tr("Folder"),
+                             I18n::tr("Installing"), I18n::tr("Completed")};
   for (int i = 0; i < 4; ++i) {
-    const QStringList names = {QStringLiteral("Приветствие"), QStringLiteral("Выбор папки"),
-                               QStringLiteral("Установка"), QStringLiteral("Завершение")};
     steps_[i]->setText((i < step ? QStringLiteral("✓  ") : QString::number(i + 1) + QStringLiteral("  ")) + names[i]);
     steps_[i]->setProperty("active", i == step);
     steps_[i]->setProperty("done", i < step);
@@ -255,21 +311,22 @@ void SetupWindow::setStep(int step) {
   back_->setVisible(step == 1);
   cancel_->setVisible(step != 3);
   cancel_->setEnabled(!busy_);
-  next_->setText(step == 1 ? QStringLiteral("Установить") : step == 3 ? QStringLiteral("Завершить") : QStringLiteral("Продолжить  →"));
+  next_->setText(step == 1 ? I18n::tr("Install") : step == 3 ? I18n::tr("Finish") : I18n::tr("Continue  →"));
   next_->setEnabled(!busy_ && (step != 1 || SetupBackend::pathError(folder_->text()).isEmpty()));
   next_->setFocus();
 }
+
 void SetupWindow::advance() {
   if (step_ == 0) { setStep(1); return; }
   if (step_ == 3) {
     if (launch_->isChecked() && !QProcess::startDetached(backend_.executable(), {})) {
-      QMessageBox::warning(this, QStringLiteral("VYNX QR"), QStringLiteral("Не удалось запустить приложение. Откройте VYNX QR из меню приложений."));
+      QMessageBox::warning(this, QStringLiteral("VYNX QR"), I18n::tr("Could not start the application. Open VYNX QR from the applications menu."));
     }
     close(); return;
   }
   busy_ = true;
   setStep(2);
-  status_->setText(QStringLiteral("Устанавливаем VYNX QR"));
+  status_->setText(I18n::tr("Installing VYNX QR"));
   error_->clear();
   destination_->setText(folder_->text());
   progress_->setRange(0, 0);

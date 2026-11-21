@@ -1,12 +1,14 @@
 //! QR engine: matrix construction, raster rendering, vector export and the
 //! built-in scan verification.
 
+pub mod decode;
 pub mod logo;
 pub mod payload;
 pub mod render;
 pub mod svg;
 pub mod verify;
 
+pub use decode::{decode_bytes, decode_rgba};
 pub use logo::{LogoAsset, LogoInput};
 pub use render::{Canvas, Rgba};
 pub use verify::{Verification, VerifyStatus};

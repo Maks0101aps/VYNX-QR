@@ -40,6 +40,10 @@ pub mod ffi {
         Phone,
         Sms,
         Geo,
+        Event,
+        Totp,
+        Crypto,
+        Payment,
     }
 
     enum ModuleStyle {
@@ -86,6 +90,12 @@ pub mod ffi {
         Dark,
     }
 
+    enum AppLanguage {
+        En,
+        Ru,
+        Uk,
+    }
+
     struct WifiPayload {
         /// Kept exactly as typed, including surrounding spaces: those are part of
         /// the network name.
@@ -124,6 +134,39 @@ pub mod ffi {
         label: String,
     }
 
+    struct EventPayload {
+        title: String,
+        start: String,
+        end: String,
+        location: String,
+        description: String,
+    }
+
+    struct TotpPayload {
+        secret: String,
+        label: String,
+        issuer: String,
+        digits: u32,
+        period: u32,
+    }
+
+    struct CryptoPayload {
+        currency: String,
+        address: String,
+        amount: String,
+        label: String,
+    }
+
+    struct PaymentPayload {
+        name: String,
+        personal_acc: String,
+        bank_name: String,
+        bic: String,
+        corresp_acc: String,
+        sum: String,
+        purpose: String,
+    }
+
     /// What the user wants encoded.
     ///
     /// `kind` selects which field is meaningful. Filling a field that `kind` does
@@ -142,6 +185,10 @@ pub mod ffi {
         phone: String,
         sms: SmsPayload,
         geo: GeoPayload,
+        event: EventPayload,
+        totp: TotpPayload,
+        crypto: CryptoPayload,
+        payment: PaymentPayload,
     }
 
     /// Logo bytes as picked from disk or dropped onto the window.
@@ -260,6 +307,7 @@ pub mod ffi {
 
     struct Settings {
         theme: ThemeMode,
+        language: AppLanguage,
         use_windows_accent: bool,
         clipboard_check: bool,
         auto_paste: bool,
@@ -314,14 +362,20 @@ pub mod ffi {
 
         /// Style defaults, so the window starts from the engine's own idea of them.
         fn default_style() -> RenderOptions;
+
+        /// Decode a QR code from encoded image bytes (PNG, JPEG, WebP).
+        fn decode_qr_bytes(bytes: &[u8]) -> Result<String>;
+
+        /// Decode a QR code from raw RGBA8 pixels.
+        fn decode_qr_rgba(pixels: &[u8], width: u32, height: u32) -> Result<String>;
     }
 }
 
 use ffi::{
-    Analysis, Bitmap, ContentKind, EcLevel, EmailPayload, ExportFormat, GenerateResult, GeoPayload,
-    Logo, LogoAsset, ModuleStyle, Payload, PayloadType, RenderOptions, Settings, SmartPayload,
-    SmsPayload, SystemInfo, ThemeMode, VCardPayload, VerifyStatus, Warning, WifiPayload,
-    WifiSecurity,
+    Analysis, AppLanguage, Bitmap, ContentKind, CryptoPayload, EcLevel, EmailPayload, EventPayload,
+    ExportFormat, GenerateResult, GeoPayload, Logo, LogoAsset, ModuleStyle, Payload, PayloadType,
+    PaymentPayload, RenderOptions, Settings, SmartPayload, SmsPayload, SystemInfo, ThemeMode,
+    TotpPayload, VCardPayload, VerifyStatus, Warning, WifiPayload, WifiSecurity,
 };
 
 /// Wrap a core call so that a panic becomes an error instead of unwinding into
@@ -413,6 +467,51 @@ fn to_core_payload(value: &Payload) -> Result<vynx_qr_core::qr::payload::QrPaylo
             latitude: value.geo.latitude,
             longitude: value.geo.longitude,
             label: value.geo.label.clone(),
+        }
+    } else if value.kind == PayloadType::Event {
+        if value.event.title.is_empty() {
+            return missing("title");
+        }
+        QrPayload::Event {
+            title: value.event.title.clone(),
+            start: value.event.start.clone(),
+            end: value.event.end.clone(),
+            location: value.event.location.clone(),
+            description: value.event.description.clone(),
+        }
+    } else if value.kind == PayloadType::Totp {
+        if value.totp.secret.is_empty() {
+            return missing("secret");
+        }
+        QrPayload::Totp {
+            secret: value.totp.secret.clone(),
+            label: value.totp.label.clone(),
+            issuer: value.totp.issuer.clone(),
+            digits: value.totp.digits,
+            period: value.totp.period,
+        }
+    } else if value.kind == PayloadType::Crypto {
+        if value.crypto.address.is_empty() {
+            return missing("address");
+        }
+        QrPayload::Crypto {
+            currency: value.crypto.currency.clone(),
+            address: value.crypto.address.clone(),
+            amount: value.crypto.amount.clone(),
+            label: value.crypto.label.clone(),
+        }
+    } else if value.kind == PayloadType::Payment {
+        if value.payment.name.is_empty() {
+            return missing("name");
+        }
+        QrPayload::Payment {
+            name: value.payment.name.clone(),
+            personal_acc: value.payment.personal_acc.clone(),
+            bank_name: value.payment.bank_name.clone(),
+            bic: value.payment.bic.clone(),
+            corresp_acc: value.payment.corresp_acc.clone(),
+            sum: value.payment.sum.clone(),
+            purpose: value.payment.purpose.clone(),
         }
     } else {
         // A cxx shared enum carries a `repr` byte, so a caller built against a
@@ -536,6 +635,22 @@ fn core_theme(theme: ThemeMode) -> vynx_qr_core::settings::ThemeMode {
     }
 }
 
+fn core_language(lang: AppLanguage) -> vynx_qr_core::settings::AppLanguage {
+    match lang {
+        AppLanguage::Ru => vynx_qr_core::settings::AppLanguage::Ru,
+        AppLanguage::Uk => vynx_qr_core::settings::AppLanguage::Uk,
+        _ => vynx_qr_core::settings::AppLanguage::En,
+    }
+}
+
+fn bridge_language(lang: vynx_qr_core::settings::AppLanguage) -> AppLanguage {
+    match lang {
+        vynx_qr_core::settings::AppLanguage::Ru => AppLanguage::Ru,
+        vynx_qr_core::settings::AppLanguage::Uk => AppLanguage::Uk,
+        _ => AppLanguage::En,
+    }
+}
+
 fn bridge_theme(theme: vynx_qr_core::settings::ThemeMode) -> ThemeMode {
     if theme == vynx_qr_core::settings::ThemeMode::Light {
         ThemeMode::Light
@@ -605,6 +720,35 @@ fn from_core_payload(core: &vynx_qr_core::qr::payload::QrPayload) -> Payload {
             latitude: 0.0,
             longitude: 0.0,
             label: String::new(),
+        },
+        event: EventPayload {
+            title: String::new(),
+            start: String::new(),
+            end: String::new(),
+            location: String::new(),
+            description: String::new(),
+        },
+        totp: TotpPayload {
+            secret: String::new(),
+            label: String::new(),
+            issuer: String::new(),
+            digits: 6,
+            period: 30,
+        },
+        crypto: CryptoPayload {
+            currency: String::new(),
+            address: String::new(),
+            amount: String::new(),
+            label: String::new(),
+        },
+        payment: PaymentPayload {
+            name: String::new(),
+            personal_acc: String::new(),
+            bank_name: String::new(),
+            bic: String::new(),
+            corresp_acc: String::new(),
+            sum: String::new(),
+            purpose: String::new(),
         },
     };
 
@@ -688,6 +832,72 @@ fn from_core_payload(core: &vynx_qr_core::qr::payload::QrPayload) -> Payload {
                 latitude: *latitude,
                 longitude: *longitude,
                 label: label.clone(),
+            };
+        }
+        QrPayload::Event {
+            title,
+            start,
+            end,
+            location,
+            description,
+        } => {
+            payload.kind = PayloadType::Event;
+            payload.event = EventPayload {
+                title: title.clone(),
+                start: start.clone(),
+                end: end.clone(),
+                location: location.clone(),
+                description: description.clone(),
+            };
+        }
+        QrPayload::Totp {
+            secret,
+            label,
+            issuer,
+            digits,
+            period,
+        } => {
+            payload.kind = PayloadType::Totp;
+            payload.totp = TotpPayload {
+                secret: secret.clone(),
+                label: label.clone(),
+                issuer: issuer.clone(),
+                digits: *digits,
+                period: *period,
+            };
+        }
+        QrPayload::Crypto {
+            currency,
+            address,
+            amount,
+            label,
+        } => {
+            payload.kind = PayloadType::Crypto;
+            payload.crypto = CryptoPayload {
+                currency: currency.clone(),
+                address: address.clone(),
+                amount: amount.clone(),
+                label: label.clone(),
+            };
+        }
+        QrPayload::Payment {
+            name,
+            personal_acc,
+            bank_name,
+            bic,
+            corresp_acc,
+            sum,
+            purpose,
+        } => {
+            payload.kind = PayloadType::Payment;
+            payload.payment = PaymentPayload {
+                name: name.clone(),
+                personal_acc: personal_acc.clone(),
+                bank_name: bank_name.clone(),
+                bic: bic.clone(),
+                corresp_acc: corresp_acc.clone(),
+                sum: sum.clone(),
+                purpose: purpose.clone(),
             };
         }
     }
@@ -872,6 +1082,14 @@ pub fn payload_label(kind: PayloadType) -> String {
         "SMS".to_string()
     } else if kind == PayloadType::Geo {
         "Location".to_string()
+    } else if kind == PayloadType::Event {
+        "Event".to_string()
+    } else if kind == PayloadType::Totp {
+        "2FA".to_string()
+    } else if kind == PayloadType::Crypto {
+        "Crypto".to_string()
+    } else if kind == PayloadType::Payment {
+        "Payment".to_string()
     } else {
         // Same reasoning as `to_core_payload`: an unrecognised kind is reported,
         // not guessed at. Guessing would label a payload type this build cannot
@@ -932,6 +1150,7 @@ pub fn default_style() -> RenderOptions {
 fn from_settings(settings: &vynx_qr_core::settings::Settings) -> Settings {
     Settings {
         theme: bridge_theme(settings.theme),
+        language: bridge_language(settings.language),
         use_windows_accent: settings.use_windows_accent,
         clipboard_check: settings.clipboard_check,
         auto_paste: settings.auto_paste,
@@ -945,6 +1164,7 @@ fn from_settings(settings: &vynx_qr_core::settings::Settings) -> Settings {
 fn to_settings(value: &Settings) -> vynx_qr_core::settings::Settings {
     vynx_qr_core::settings::Settings {
         theme: core_theme(value.theme),
+        language: core_language(value.language),
         use_windows_accent: value.use_windows_accent,
         clipboard_check: value.clipboard_check,
         auto_paste: value.auto_paste,
@@ -957,4 +1177,16 @@ fn to_settings(value: &Settings) -> vynx_qr_core::settings::Settings {
             vynx_qr_core::qr::payload::ModuleStyle::Square
         },
     }
+}
+
+fn decode_qr_bytes(bytes: &[u8]) -> Result<String, String> {
+    guard("decode_qr_bytes", || {
+        vynx_qr_core::qr::decode_bytes(bytes).map_err(|e| e.to_string())
+    })
+}
+
+fn decode_qr_rgba(pixels: &[u8], width: u32, height: u32) -> Result<String, String> {
+    guard("decode_qr_rgba", || {
+        vynx_qr_core::qr::decode_rgba(width, height, pixels).map_err(|e| e.to_string())
+    })
 }

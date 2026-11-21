@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(VYNX_QR
-  VERSION 1.1.2
+  VERSION 1.1.4
   DESCRIPTION "Fast, private QR codes for Windows and Linux."
   HOMEPAGE_URL "https://github.com/Maks0101aps/VYNX-QR"
   LANGUAGES CXX
@@ -77,7 +77,11 @@ if(VYNX_BUILD_APP OR VYNX_BUILD_WINDOW_TESTS)
 
   message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
   message(STATUS "Qt prefix from the environment: $ENV{QTDIR}")
-  find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+  set(VYNX_QT_COMPONENTS Core Gui Widgets)
+  if(NOT WIN32)
+    list(APPEND VYNX_QT_COMPONENTS Network)
+  endif()
+  find_package(Qt6 REQUIRED COMPONENTS ${VYNX_QT_COMPONENTS})
   message(STATUS "Qt ${Qt6_VERSION} found at ${Qt6_DIR}")
 endif()
 if(VYNX_BUILD_WINDOW_TESTS)
@@ -181,11 +185,17 @@ message(STATUS "Bridge include root: ${VYNX_BRIDGE_INCLUDE_ROOT}")
 # ---------------------------------------------------------------------------
 # The window
 # ---------------------------------------------------------------------------
+set(VYNX_I18N_SOURCES app/i18n/I18n.cpp app/i18n/I18n.h)
 set(VYNX_SETUP_SOURCES app/setup/SetupBackend.cpp app/setup/SetupBackend.h
-    app/setup/SetupWindow.cpp app/setup/SetupWindow.h app/resources/setup.qrc)
+    app/setup/SetupWindow.cpp app/setup/SetupWindow.h app/resources/setup.qrc
+    ${VYNX_I18N_SOURCES})
+set(VYNX_UPDATER_SOURCES app/updater/AutoUpdater.cpp app/updater/AutoUpdater.h
+    app/updater/UpdateDialog.cpp app/updater/UpdateDialog.h)
 if(VYNX_BUILD_APP)
 add_executable(VYNX_QR WIN32
+  ${VYNX_I18N_SOURCES}
   ${VYNX_SETUP_SOURCES}
+  ${VYNX_UPDATER_SOURCES}
   app/main.cpp
   app/MainWindow.cpp
   app/MainWindow.h
@@ -202,6 +212,10 @@ add_executable(VYNX_QR WIN32
   app/widgets/CustomizePanel.h
   app/widgets/QrPreview.cpp
   app/widgets/QrPreview.h
+  app/widgets/ScanResultDialog.cpp
+  app/widgets/ScanResultDialog.h
+  app/widgets/ScreenSnipper.cpp
+  app/widgets/ScreenSnipper.h
   app/widgets/SettingsDialog.cpp
   app/widgets/SettingsDialog.h
   app/widgets/SpecialQrForms.cpp
@@ -217,6 +231,7 @@ target_link_libraries(VYNX_QR PRIVATE
   Qt6::Core
   Qt6::Gui
   Qt6::Widgets
+  $<$<NOT:$<BOOL:${WIN32}>>:Qt6::Network>
   "${VYNX_BRIDGE_LIB}"
 )
 
@@ -274,6 +289,8 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   # the same list rather than duplicating it.
   add_executable(vynx_window_test
     tests/MainWindow_test.cpp
+    ${VYNX_I18N_SOURCES}
+    ${VYNX_UPDATER_SOURCES}
     app/MainWindow.cpp
     app/widgets/AboutDialog.cpp
     app/widgets/AboutDialog.h
@@ -289,6 +306,10 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
     app/widgets/CustomizePanel.h
     app/widgets/QrPreview.cpp
     app/widgets/QrPreview.h
+    app/widgets/ScanResultDialog.cpp
+    app/widgets/ScanResultDialog.h
+    app/widgets/ScreenSnipper.cpp
+    app/widgets/ScreenSnipper.h
     app/widgets/SettingsDialog.cpp
     app/widgets/SettingsDialog.h
     app/widgets/SpecialQrForms.cpp
@@ -303,6 +324,7 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
     Qt6::Gui
     Qt6::Widgets
     Qt6::Test
+    $<$<NOT:$<BOOL:${WIN32}>>:Qt6::Network>
     "${VYNX_BRIDGE_LIB}"
     ${VYNX_RUST_SYSTEM_LIBS}
   )
@@ -362,6 +384,8 @@ set(VYNX_RUST_SYSTEM_LIBS
   oleaut32    # automation
   uuid        # COM interface identifiers
   dwmapi      # window chrome, used by the native integration
+  winhttp     # Windows HTTP Services (auto-updater)
+  synchronization # Rust std sync (WaitOnAddress, WakeByAddressSingle)
 )
 else()
   find_package(Threads REQUIRED)

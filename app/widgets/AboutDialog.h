@@ -2,13 +2,16 @@
 
 #include <QDialog>
 
+class AutoUpdater;
+
 /// A small About box: what this is, what it does not do, and where it lives.
 class AboutDialog final : public QDialog {
   Q_OBJECT
 
 public:
-  explicit AboutDialog(QWidget *parent = nullptr);
+  explicit AboutDialog(QWidget *parent = nullptr, AutoUpdater *updater = nullptr);
 
 private:
   void addLink(const QString &text, const QString &url);
+  AutoUpdater *updater_{nullptr};
 };

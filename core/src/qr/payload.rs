@@ -135,6 +135,35 @@ pub enum QrPayload {
         longitude: f64,
         label: String,
     },
+    Event {
+        title: String,
+        start: String,
+        end: String,
+        location: String,
+        description: String,
+    },
+    Totp {
+        secret: String,
+        label: String,
+        issuer: String,
+        digits: u32,
+        period: u32,
+    },
+    Crypto {
+        currency: String,
+        address: String,
+        amount: String,
+        label: String,
+    },
+    Payment {
+        name: String,
+        personal_acc: String,
+        bank_name: String,
+        bic: String,
+        corresp_acc: String,
+        sum: String,
+        purpose: String,
+    },
 }
 
 impl QrPayload {
@@ -149,6 +178,10 @@ impl QrPayload {
             Self::Phone { .. } => "phone",
             Self::Sms { .. } => "sms",
             Self::Geo { .. } => "geo",
+            Self::Event { .. } => "event",
+            Self::Totp { .. } => "totp",
+            Self::Crypto { .. } => "crypto",
+            Self::Payment { .. } => "payment",
         }
     }
 
@@ -192,6 +225,43 @@ impl QrPayload {
                 longitude,
                 label,
             } => crate::formats::geo::encode(*latitude, *longitude, label),
+            Self::Event {
+                title,
+                start,
+                end,
+                location,
+                description,
+            } => crate::formats::event::encode(title, start, end, location, description),
+            Self::Totp {
+                secret,
+                label,
+                issuer,
+                digits,
+                period,
+            } => crate::formats::totp::encode(secret, label, issuer, *digits, *period),
+            Self::Crypto {
+                currency,
+                address,
+                amount,
+                label,
+            } => crate::formats::crypto::encode(currency, address, amount, label),
+            Self::Payment {
+                name,
+                personal_acc,
+                bank_name,
+                bic,
+                corresp_acc,
+                sum,
+                purpose,
+            } => crate::formats::payment::encode(
+                name,
+                personal_acc,
+                bank_name,
+                bic,
+                corresp_acc,
+                sum,
+                purpose,
+            ),
         }
     }
 
@@ -224,6 +294,30 @@ impl QrPayload {
                     "Location".to_string()
                 } else {
                     label.clone()
+                }
+            }
+            Self::Event { title, .. } => {
+                if title.trim().is_empty() {
+                    "Event".to_string()
+                } else {
+                    title.clone()
+                }
+            }
+            Self::Totp { label, .. } => {
+                if label.trim().is_empty() {
+                    "2FA".to_string()
+                } else {
+                    label.clone()
+                }
+            }
+            Self::Crypto { currency, .. } => {
+                format!("Crypto ({currency})")
+            }
+            Self::Payment { name, .. } => {
+                if name.trim().is_empty() {
+                    "Payment".to_string()
+                } else {
+                    name.clone()
                 }
             }
         }
