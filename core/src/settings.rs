@@ -31,12 +31,27 @@ pub enum ExportFormat {
     Svg,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AppLanguage {
+    En,
+    Ru,
+    Uk,
+}
+
+impl Default for AppLanguage {
+    fn default() -> Self {
+        Self::En
+    }
+}
+
 /// Missing fields fall back to the defaults, so a settings file written by an
 /// older build still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub theme: ThemeMode,
+    pub language: AppLanguage,
     /// Follow the system accent colour (legacy JSON field retained) instead of the VYNX blue.
     pub use_windows_accent: bool,
     /// Read the clipboard once at start-up and offer it as a suggestion.
@@ -53,6 +68,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: ThemeMode::System,
+            language: AppLanguage::En,
             use_windows_accent: true,
             clipboard_check: true,
             auto_paste: false,
@@ -226,6 +242,25 @@ mod tests {
         let path = dir.path().join("settings.json");
         fs::write(&path, "{ this is not json").expect("write");
         assert_eq!(load_from(&path), Settings::default());
+    }
+
+    #[test]
+    fn language_serialization_and_fallback() {
+        let default_settings = Settings::default();
+        assert_eq!(default_settings.language, AppLanguage::En);
+
+        let json_ru = r#"{"language":"ru"}"#;
+        let parsed_ru: Settings = serde_json::from_str(json_ru).expect("deserialize");
+        assert_eq!(parsed_ru.language, AppLanguage::Ru);
+
+        let json_uk = r#"{"language":"uk"}"#;
+        let parsed_uk: Settings = serde_json::from_str(json_uk).expect("deserialize");
+        assert_eq!(parsed_uk.language, AppLanguage::Uk);
+
+        // Missing field defaults to En
+        let json_empty = r#"{}"#;
+        let parsed_empty: Settings = serde_json::from_str(json_empty).expect("deserialize");
+        assert_eq!(parsed_empty.language, AppLanguage::En);
     }
 
     #[test]

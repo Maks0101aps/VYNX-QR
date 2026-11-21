@@ -7,12 +7,13 @@
 #include <QVBoxLayout>
 
 #include "Theme.h"
+#include "i18n/I18n.h"
 #include "platform/PlatformIntegration.h"
 #include "updater/AutoUpdater.h"
 
 AboutDialog::AboutDialog(QWidget *parent, AutoUpdater *updater)
     : QDialog(parent), updater_(updater) {
-  setWindowTitle(QStringLiteral("About VYNX QR"));
+  setWindowTitle(I18n::tr("About VYNX QR"));
   setModal(true);
 
   auto *layout = new QVBoxLayout(this);
@@ -24,14 +25,14 @@ AboutDialog::AboutDialog(QWidget *parent, AutoUpdater *updater)
   name->setProperty("role", QStringLiteral("heading"));
   layout->addWidget(name);
 
-  auto *version = new QLabel(QStringLiteral("Version %1 · %2").arg(PlatformIntegration::versionString(), PlatformIntegration::platformName()));
+  auto *version = new QLabel(I18n::tr("Version %1 · %2").arg(PlatformIntegration::versionString(), PlatformIntegration::platformName()));
   version->setProperty("role", QStringLiteral("caption"));
   layout->addWidget(version);
 
-  auto *summary = new QLabel(QStringLiteral("Fast, private QR codes."));
+  auto *summary = new QLabel(I18n::tr("Fast, private QR codes."));
   layout->addWidget(summary);
 
-  auto *privacy = new QLabel(QStringLiteral("100% local. No telemetry, no account,\nno history."));
+  auto *privacy = new QLabel(I18n::tr("100% local. No telemetry, no account,\nno history."));
   privacy->setProperty("role", QStringLiteral("caption"));
   layout->addWidget(privacy);
   auto *qtNotice = new QLabel(PlatformIntegration::qtLicenseNotice());
@@ -40,23 +41,23 @@ AboutDialog::AboutDialog(QWidget *parent, AutoUpdater *updater)
 
   layout->addSpacing(Tokens::SpaceSmall);
   addLink(QStringLiteral("GitHub"), PlatformIntegration::repositoryUrl());
-  addLink(QStringLiteral("Licence"), QStringLiteral("%1/blob/main/LICENSE")
+  addLink(I18n::tr("Licence"), QStringLiteral("%1/blob/main/LICENSE")
                                        .arg(PlatformIntegration::repositoryUrl()));
 
   if (updater_) {
-    auto *checkUpdateBtn = new QPushButton(QStringLiteral("Проверить обновления"), this);
+    auto *checkUpdateBtn = new QPushButton(I18n::tr("Check for updates"), this);
     checkUpdateBtn->setProperty("flat", true);
     checkUpdateBtn->setCursor(Qt::PointingHandCursor);
     connect(checkUpdateBtn, &QPushButton::clicked, this, [this] {
       connect(updater_, &AutoUpdater::noUpdateAvailable, this, [this] {
         QMessageBox::information(this, QStringLiteral("VYNX QR"),
-                                 QStringLiteral("У вас установлена последняя версия VYNX QR (%1).")
+                                 I18n::tr("You have the latest version of VYNX QR (%1).")
                                      .arg(PlatformIntegration::versionString()));
       }, Qt::SingleShotConnection);
 
       connect(updater_, &AutoUpdater::checkFailed, this, [this](const QString &err) {
         QMessageBox::warning(this, QStringLiteral("VYNX QR"),
-                             QStringLiteral("Не удалось проверить обновления: %1").arg(err));
+                             I18n::tr("Failed to check for updates: %1").arg(err));
       }, Qt::SingleShotConnection);
 
       updater_->checkForUpdates(false);
@@ -65,6 +66,9 @@ AboutDialog::AboutDialog(QWidget *parent, AutoUpdater *updater)
   }
 
   auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close);
+  if (auto *closeBtn = buttons->button(QDialogButtonBox::Close)) {
+    closeBtn->setText(I18n::tr("Close"));
+  }
   connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::accept);
   layout->addWidget(buttons);
 }

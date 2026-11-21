@@ -14,6 +14,7 @@
 
 #include "Bridge.h"
 #include "Theme.h"
+#include "i18n/I18n.h"
 
 namespace {
 
@@ -411,24 +412,24 @@ void SpecialQrForms::buildEventForm() {
   layout->setSpacing(Tokens::SpaceMedium);
 
   eventTitle_ = new QLineEdit;
-  eventTitle_->setPlaceholderText(QStringLiteral("Встреча команды / Team Sync"));
-  layout->addWidget(field(QStringLiteral("Название события"), eventTitle_));
+  eventTitle_->setPlaceholderText(I18n::tr("Team Meeting / Sync"));
+  layout->addWidget(field(I18n::tr("Event title"), eventTitle_));
 
   eventStart_ = new QLineEdit;
   eventStart_->setPlaceholderText(QStringLiteral("20261116T120000Z"));
-  layout->addWidget(field(QStringLiteral("Начало (YYYYMMDDTHHMMSSZ)"), eventStart_));
+  layout->addWidget(field(I18n::tr("Start time (YYYYMMDDTHHMMSSZ)"), eventStart_));
 
   eventEnd_ = new QLineEdit;
   eventEnd_->setPlaceholderText(QStringLiteral("20261116T130000Z"));
-  layout->addWidget(field(QStringLiteral("Окончание (YYYYMMDDTHHMMSSZ)"), eventEnd_));
+  layout->addWidget(field(I18n::tr("End time (YYYYMMDDTHHMMSSZ)"), eventEnd_));
 
   eventLocation_ = new QLineEdit;
-  eventLocation_->setPlaceholderText(QStringLiteral("Конференц-зал / Online"));
-  layout->addWidget(field(QStringLiteral("Место проведения"), eventLocation_));
+  eventLocation_->setPlaceholderText(I18n::tr("Conference Room / Online"));
+  layout->addWidget(field(I18n::tr("Location"), eventLocation_));
 
   eventDescription_ = new QPlainTextEdit;
   eventDescription_->setMinimumHeight(80);
-  layout->addWidget(field(QStringLiteral("Описание"), eventDescription_));
+  layout->addWidget(field(I18n::tr("Description"), eventDescription_));
 
   connect(eventTitle_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
   connect(eventStart_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
@@ -447,16 +448,16 @@ void SpecialQrForms::buildTotpForm() {
 
   totpSecret_ = new QLineEdit;
   totpSecret_->setPlaceholderText(QStringLiteral("JBSWY3DPEHPK3PXP"));
-  layout->addWidget(field(QStringLiteral("Секретный ключ (Base32)"), totpSecret_,
-                         QStringLiteral("Используется для генерации кодов двухфакторной аутентификации.")));
+  layout->addWidget(field(I18n::tr("Secret key (Base32)"), totpSecret_,
+                         I18n::tr("Used to generate two-factor authentication codes.")));
 
   totpLabel_ = new QLineEdit;
   totpLabel_->setPlaceholderText(QStringLiteral("user@example.com"));
-  layout->addWidget(field(QStringLiteral("Аккаунт / Логин"), totpLabel_));
+  layout->addWidget(field(I18n::tr("Account / Username"), totpLabel_));
 
   totpIssuer_ = new QLineEdit;
   totpIssuer_->setPlaceholderText(QStringLiteral("GitHub / Google / VYNX"));
-  layout->addWidget(field(QStringLiteral("Сервис (Issuer)"), totpIssuer_));
+  layout->addWidget(field(I18n::tr("Service (Issuer)"), totpIssuer_));
 
   connect(totpSecret_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
   connect(totpLabel_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
@@ -473,19 +474,19 @@ void SpecialQrForms::buildCryptoForm() {
 
   cryptoCurrency_ = new QComboBox;
   cryptoCurrency_->addItems({QStringLiteral("Bitcoin"), QStringLiteral("Ethereum"), QStringLiteral("TON"), QStringLiteral("USDT")});
-  layout->addWidget(field(QStringLiteral("Криптовалюта"), cryptoCurrency_));
+  layout->addWidget(field(I18n::tr("Cryptocurrency"), cryptoCurrency_));
 
   cryptoAddress_ = new QLineEdit;
   cryptoAddress_->setPlaceholderText(QStringLiteral("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa / 0x... / EQ..."));
-  layout->addWidget(field(QStringLiteral("Адрес кошелька"), cryptoAddress_));
+  layout->addWidget(field(I18n::tr("Wallet address"), cryptoAddress_));
 
   cryptoAmount_ = new QLineEdit;
   cryptoAmount_->setPlaceholderText(QStringLiteral("0.05"));
-  layout->addWidget(field(QStringLiteral("Сумма (необязательно)"), cryptoAmount_));
+  layout->addWidget(field(I18n::tr("Amount (optional)"), cryptoAmount_));
 
   cryptoLabel_ = new QLineEdit;
   cryptoLabel_->setPlaceholderText(QStringLiteral("Donation / Order #42"));
-  layout->addWidget(field(QStringLiteral("Назначение / Сообщение"), cryptoLabel_));
+  layout->addWidget(field(I18n::tr("Label / Message"), cryptoLabel_));
 
   connect(cryptoCurrency_, &QComboBox::currentIndexChanged, this, &SpecialQrForms::markComplete);
   connect(cryptoAddress_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
@@ -502,32 +503,32 @@ void SpecialQrForms::buildPaymentForm() {
   layout->setSpacing(Tokens::SpaceMedium);
 
   paymentName_ = new QLineEdit;
-  paymentName_->setPlaceholderText(QStringLiteral("ООО Пример / Иванов И.И."));
-  layout->addWidget(field(QStringLiteral("Получатель платежа"), paymentName_));
+  paymentName_->setPlaceholderText(QStringLiteral("Example LLC / John Doe"));
+  layout->addWidget(field(I18n::tr("Recipient name"), paymentName_));
 
   paymentAcc_ = new QLineEdit;
   paymentAcc_->setPlaceholderText(QStringLiteral("40702810938000012345"));
-  layout->addWidget(field(QStringLiteral("Номер счета получателя"), paymentAcc_));
+  layout->addWidget(field(I18n::tr("Recipient account number"), paymentAcc_));
 
   paymentBank_ = new QLineEdit;
-  paymentBank_->setPlaceholderText(QStringLiteral("ПАО СБЕРБАНК"));
-  layout->addWidget(field(QStringLiteral("Наименование банка"), paymentBank_));
+  paymentBank_->setPlaceholderText(QStringLiteral("Bank Name"));
+  layout->addWidget(field(I18n::tr("Bank name"), paymentBank_));
 
   paymentBic_ = new QLineEdit;
   paymentBic_->setPlaceholderText(QStringLiteral("044525225"));
-  layout->addWidget(field(QStringLiteral("БИК банка"), paymentBic_));
+  layout->addWidget(field(I18n::tr("Bank BIC"), paymentBic_));
 
   paymentCorresp_ = new QLineEdit;
   paymentCorresp_->setPlaceholderText(QStringLiteral("30101810400000000225"));
-  layout->addWidget(field(QStringLiteral("Корр. счет"), paymentCorresp_));
+  layout->addWidget(field(I18n::tr("Correspondent account"), paymentCorresp_));
 
   paymentSum_ = new QLineEdit;
   paymentSum_->setPlaceholderText(QStringLiteral("1500.00"));
-  layout->addWidget(field(QStringLiteral("Сумма в рублях (необязательно)"), paymentSum_));
+  layout->addWidget(field(I18n::tr("Amount (optional)"), paymentSum_));
 
   paymentPurpose_ = new QLineEdit;
-  paymentPurpose_->setPlaceholderText(QStringLiteral("Оплата услуг по счету № 10"));
-  layout->addWidget(field(QStringLiteral("Назначение платежа"), paymentPurpose_));
+  paymentPurpose_->setPlaceholderText(QStringLiteral("Invoice #10 payment"));
+  layout->addWidget(field(I18n::tr("Payment purpose"), paymentPurpose_));
 
   connect(paymentName_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);
   connect(paymentAcc_, &QLineEdit::textChanged, this, &SpecialQrForms::markComplete);

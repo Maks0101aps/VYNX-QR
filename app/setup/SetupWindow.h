@@ -8,6 +8,7 @@ class QLineEdit;
 class QStackedWidget;
 class QProgressBar;
 class QCheckBox;
+class QComboBox;
 class QCloseEvent;
 
 class SetupWindow : public QWidget {
@@ -20,6 +21,8 @@ protected:
 private:
   void setStep(int step);
   void advance();
+  void retranslateUi();
+
   SetupBackend backend_;
   int step_ = 0;
   bool busy_ = false;
@@ -30,4 +33,17 @@ private:
   QProgressBar *progress_;
   QPushButton *next_, *back_, *cancel_;
   QCheckBox *launch_;
+  QComboBox *langCombo_ = nullptr;
+  QLabel *welcomeTitle_ = nullptr;
+  QLabel *welcomeSub_ = nullptr;
+  QLabel *welcomeDesc_ = nullptr;
+  QLabel *folderTitle_ = nullptr;
+  QLabel *folderSub_ = nullptr;
+  QLabel *folderLabel_ = nullptr;
+  QPushButton *browseBtn_ = nullptr;
+  QLabel *licenseFootnote_ = nullptr;
+  QPushButton *licenseBtn_ = nullptr;
+  QLabel *finishTitle_ = nullptr;
+  QLabel *finishSub_ = nullptr;
+  QLabel *versionLabel_ = nullptr;
 };

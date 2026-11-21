@@ -13,7 +13,7 @@ Unicode true
 !include "MUI2.nsh"
 
 !ifndef VYNX_VERSION
-  !define VYNX_VERSION "1.1.3"
+  !define VYNX_VERSION "1.1.4"
 !endif
 !ifndef VYNX_PAYLOAD_DIR
   !define VYNX_PAYLOAD_DIR "..\\bin"
@@ -56,7 +56,7 @@ VIAddVersionKey "LegalURL"        "https://github.com/Maks0101aps/VYNX-QR"
 !define MUI_UNICON "${VYNX_ICON}"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\VYNX QR.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Open VYNX QR"
+!define MUI_FINISHPAGE_RUN_TEXT "$(DESC_RunText)"
 
 !insertmacro MUI_PAGE_LICENSE "${VYNX_LICENSE}"
 !insertmacro MUI_PAGE_DIRECTORY
@@ -67,8 +67,24 @@ VIAddVersionKey "LegalURL"        "https://github.com/Maks0101aps/VYNX-QR"
 !insertmacro MUI_UNPAGE_INSTFILES
 
 !insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "Russian"
+!insertmacro MUI_LANGUAGE "Ukrainian"
+
+; Language selection dialog settings
+!define MUI_LANGDLL_REGISTRY_ROOT "HKCU"
+!define MUI_LANGDLL_REGISTRY_KEY "Software\VYNX QR"
+!define MUI_LANGDLL_REGISTRY_VALUENAME "InstallerLanguage"
+
+LangString DESC_ChooseFolder ${LANG_ENGLISH} "Choose an empty folder or an existing VYNX QR installation."
+LangString DESC_ChooseFolder ${LANG_RUSSIAN} "Выберите пустую папку или существующую установку VYNX QR."
+LangString DESC_ChooseFolder ${LANG_UKRAINIAN} "Виберіть порожню папку або наявну установку VYNX QR."
+
+LangString DESC_RunText ${LANG_ENGLISH} "Open VYNX QR"
+LangString DESC_RunText ${LANG_RUSSIAN} "Запустить VYNX QR"
+LangString DESC_RunText ${LANG_UKRAINIAN} "Запустити VYNX QR"
 
 Function .onInit
+  !insertmacro MUI_LANGDLL_DISPLAY
   ; A silent /D invocation must be just as safe as the folder picker.
   ClearErrors
   FileOpen $2 "$INSTDIR\.vynx-qr-install" r
@@ -87,7 +103,7 @@ Function .onInit
       StrCmp $1 ".." continueDirectory
       FindClose $0
       IfSilent +2
-        MessageBox MB_OK|MB_ICONSTOP "Choose an empty folder or an existing VYNX QR installation."
+        MessageBox MB_OK|MB_ICONSTOP "$(DESC_ChooseFolder)"
       SetErrorLevel 2
       Quit
     continueDirectory:

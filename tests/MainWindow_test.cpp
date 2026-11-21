@@ -43,6 +43,7 @@
 #include "widgets/QrPreview.h"
 #include "widgets/SpecialQrForms.h"
 #include "updater/AutoUpdater.h"
+#include "i18n/I18n.h"
 #include "vynx-qr-bridge/src/lib.rs.h"
 
 namespace {
@@ -448,13 +449,30 @@ private slots:
   }
 
   void autoUpdaterVersionComparisonWorks() {
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4"), QStringLiteral("1.1.3")));
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("1.1.4"), QStringLiteral("1.1.3")));
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.2.0"), QStringLiteral("1.1.3")));
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v2.0.0"), QStringLiteral("1.1.3")));
-    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.3"), QStringLiteral("1.1.3")));
-    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.2"), QStringLiteral("1.1.3")));
-    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.0.1"), QStringLiteral("1.1.3")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.1.5"), QStringLiteral("1.1.4")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("1.1.5"), QStringLiteral("1.1.4")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.2.0"), QStringLiteral("1.1.4")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v2.0.0"), QStringLiteral("1.1.4")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4"), QStringLiteral("1.1.4")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.3"), QStringLiteral("1.1.4")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.0.1"), QStringLiteral("1.1.4")));
+  }
+
+  void i18nLanguageSwitchingWorks() {
+    I18n::instance().setLanguage(I18n::Language::English);
+    QCOMPARE(I18n::tr("Check for updates"), QStringLiteral("Check for updates"));
+    QCOMPARE(I18n::tr("Close"), QStringLiteral("Close"));
+
+    I18n::instance().setLanguage(I18n::Language::Russian);
+    QCOMPARE(I18n::tr("Check for updates"), QStringLiteral("Проверить обновления"));
+    QCOMPARE(I18n::tr("Close"), QStringLiteral("Закрыть"));
+
+    I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    QCOMPARE(I18n::tr("Check for updates"), QStringLiteral("Перевірити оновлення"));
+    QCOMPARE(I18n::tr("Close"), QStringLiteral("Закрити"));
+
+    // Reset back to English
+    I18n::instance().setLanguage(I18n::Language::English);
   }
 
   void decodeQrCodeFromImage() {

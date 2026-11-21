@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(VYNX_QR
-  VERSION 1.1.3
+  VERSION 1.1.4
   DESCRIPTION "Fast, private QR codes for Windows and Linux."
   HOMEPAGE_URL "https://github.com/Maks0101aps/VYNX-QR"
   LANGUAGES CXX
@@ -185,12 +185,15 @@ message(STATUS "Bridge include root: ${VYNX_BRIDGE_INCLUDE_ROOT}")
 # ---------------------------------------------------------------------------
 # The window
 # ---------------------------------------------------------------------------
+set(VYNX_I18N_SOURCES app/i18n/I18n.cpp app/i18n/I18n.h)
 set(VYNX_SETUP_SOURCES app/setup/SetupBackend.cpp app/setup/SetupBackend.h
-    app/setup/SetupWindow.cpp app/setup/SetupWindow.h app/resources/setup.qrc)
+    app/setup/SetupWindow.cpp app/setup/SetupWindow.h app/resources/setup.qrc
+    ${VYNX_I18N_SOURCES})
 set(VYNX_UPDATER_SOURCES app/updater/AutoUpdater.cpp app/updater/AutoUpdater.h
     app/updater/UpdateDialog.cpp app/updater/UpdateDialog.h)
 if(VYNX_BUILD_APP)
 add_executable(VYNX_QR WIN32
+  ${VYNX_I18N_SOURCES}
   ${VYNX_SETUP_SOURCES}
   ${VYNX_UPDATER_SOURCES}
   app/main.cpp
@@ -286,6 +289,7 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
   # the same list rather than duplicating it.
   add_executable(vynx_window_test
     tests/MainWindow_test.cpp
+    ${VYNX_I18N_SOURCES}
     ${VYNX_UPDATER_SOURCES}
     app/MainWindow.cpp
     app/widgets/AboutDialog.cpp

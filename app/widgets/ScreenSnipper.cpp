@@ -7,6 +7,8 @@
 #include <QPainter>
 #include <QScreen>
 
+#include "Theme.h"
+#include "i18n/I18n.h"
 #include "platform/PlatformIntegration.h"
 #include "vynx-qr-bridge/src/lib.rs.h"
 
@@ -70,7 +72,7 @@ void ScreenSnipper::paintEvent(QPaintEvent *) {
   font.setBold(true);
   painter.setFont(font);
 
-  const QString hint = QStringLiteral("Выделите область с QR-кодом мышью · Esc для отмены");
+  const QString hint = I18n::tr("Select area with QR code · Esc to cancel");
   const QRect textRect(0, 30, width(), 40);
   painter.drawText(textRect, Qt::AlignHCenter | Qt::AlignVCenter, hint);
 }

@@ -90,6 +90,12 @@ pub mod ffi {
         Dark,
     }
 
+    enum AppLanguage {
+        En,
+        Ru,
+        Uk,
+    }
+
     struct WifiPayload {
         /// Kept exactly as typed, including surrounding spaces: those are part of
         /// the network name.
@@ -301,6 +307,7 @@ pub mod ffi {
 
     struct Settings {
         theme: ThemeMode,
+        language: AppLanguage,
         use_windows_accent: bool,
         clipboard_check: bool,
         auto_paste: bool,
@@ -365,7 +372,7 @@ pub mod ffi {
 }
 
 use ffi::{
-    Analysis, Bitmap, ContentKind, CryptoPayload, EcLevel, EmailPayload, EventPayload,
+    Analysis, AppLanguage, Bitmap, ContentKind, CryptoPayload, EcLevel, EmailPayload, EventPayload,
     ExportFormat, GenerateResult, GeoPayload, Logo, LogoAsset, ModuleStyle, Payload, PayloadType,
     PaymentPayload, RenderOptions, Settings, SmartPayload, SmsPayload, SystemInfo, ThemeMode,
     TotpPayload, VCardPayload, VerifyStatus, Warning, WifiPayload, WifiSecurity,
@@ -625,6 +632,22 @@ fn core_theme(theme: ThemeMode) -> vynx_qr_core::settings::ThemeMode {
         vynx_qr_core::settings::ThemeMode::Dark
     } else {
         vynx_qr_core::settings::ThemeMode::System
+    }
+}
+
+fn core_language(lang: AppLanguage) -> vynx_qr_core::settings::AppLanguage {
+    match lang {
+        AppLanguage::Ru => vynx_qr_core::settings::AppLanguage::Ru,
+        AppLanguage::Uk => vynx_qr_core::settings::AppLanguage::Uk,
+        _ => vynx_qr_core::settings::AppLanguage::En,
+    }
+}
+
+fn bridge_language(lang: vynx_qr_core::settings::AppLanguage) -> AppLanguage {
+    match lang {
+        vynx_qr_core::settings::AppLanguage::Ru => AppLanguage::Ru,
+        vynx_qr_core::settings::AppLanguage::Uk => AppLanguage::Uk,
+        _ => AppLanguage::En,
     }
 }
 
@@ -1127,6 +1150,7 @@ pub fn default_style() -> RenderOptions {
 fn from_settings(settings: &vynx_qr_core::settings::Settings) -> Settings {
     Settings {
         theme: bridge_theme(settings.theme),
+        language: bridge_language(settings.language),
         use_windows_accent: settings.use_windows_accent,
         clipboard_check: settings.clipboard_check,
         auto_paste: settings.auto_paste,
@@ -1140,6 +1164,7 @@ fn from_settings(settings: &vynx_qr_core::settings::Settings) -> Settings {
 fn to_settings(value: &Settings) -> vynx_qr_core::settings::Settings {
     vynx_qr_core::settings::Settings {
         theme: core_theme(value.theme),
+        language: core_language(value.language),
         use_windows_accent: value.use_windows_accent,
         clipboard_check: value.clipboard_check,
         auto_paste: value.auto_paste,

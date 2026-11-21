@@ -24,6 +24,7 @@
 #include <QVBoxLayout>
 
 #include "Theme.h"
+#include "i18n/I18n.h"
 #include "platform/PlatformIntegration.h"
 #include "widgets/AboutDialog.h"
 #include "widgets/Bridge.h"
@@ -113,6 +114,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   resize(Tokens::WindowWidth, Tokens::WindowHeight);
 
   settings_ = vynx::load_settings();
+  if (settings_.language == vynx::AppLanguage::Ru) {
+    I18n::instance().setLanguage(I18n::Language::Russian);
+  } else if (settings_.language == vynx::AppLanguage::Uk) {
+    I18n::instance().setLanguage(I18n::Language::Ukrainian);
+  } else {
+    I18n::instance().setLanguage(I18n::Language::English);
+  }
 
   auto *central = new QWidget(this);
   auto *outer = new QHBoxLayout(central);
@@ -137,6 +145,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   connect(&debounce_, &QTimer::timeout, this, &MainWindow::onSmartInputChanged);
 
   wireShortcuts();
+  retranslateUi();
 
   // Read once, after the window exists, so the first paint is not delayed.
   QTimer::singleShot(0, this, &MainWindow::readClipboardOnce);
@@ -147,7 +156,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   snipper_ = new ScreenSnipper(this);
   connect(snipper_, &ScreenSnipper::codeDecoded, this, &MainWindow::onQrDecoded);
   connect(snipper_, &ScreenSnipper::decodeFailed, this, [this] {
-    showToast(QStringLiteral("QR-код не найден"));
+    showToast(I18n::tr("QR code not found"));
   });
 
   setAcceptDrops(true);
@@ -686,14 +695,40 @@ void MainWindow::onOpenSettings() {
 }
 
 void MainWindow::applySettings(const vynx::Settings &settings) {
+  const bool langChanged = (settings_.language != settings.language);
   settings_ = settings;
   customize_->applySettings(settings);
   applyTheme();
+  if (langChanged) {
+    if (settings_.language == vynx::AppLanguage::Ru) {
+      I18n::instance().setLanguage(I18n::Language::Russian);
+    } else if (settings_.language == vynx::AppLanguage::Uk) {
+      I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    } else {
+      I18n::instance().setLanguage(I18n::Language::English);
+    }
+    retranslateUi();
+  }
   try {
     vynx::save_settings(settings);
   } catch (const rust::Error &error) {
     showToast(vynxq::errorMessage(error));
   }
+}
+
+void MainWindow::retranslateUi() {
+  setWindowTitle(I18n::tr("VYNX QR"));
+  if (inputField_) {
+    inputField_->setPlaceholderText(I18n::tr("Type or paste anything to generate a QR code"));
+  }
+  if (copy_) copy_->setText(I18n::tr("Copy"));
+  if (save_) save_->setText(I18n::tr("Save") + QStringLiteral(" ▾"));
+  if (clear_) clear_->setText(I18n::tr("Clear"));
+  if (customizeButton_) customizeButton_->setText(I18n::tr("Customize"));
+  if (specialButton_) specialButton_->setText(QStringLiteral("+  ") + I18n::tr("Special QR"));
+  if (scanButton_) scanButton_->setText(QStringLiteral("📷  ") + I18n::tr("Scan QR") + QStringLiteral(" ▾"));
+  if (settingsButton_) settingsButton_->setText(I18n::tr("Settings"));
+  if (aboutButton_) aboutButton_->setText(I18n::tr("About"));
 }
 
 void MainWindow::applyTheme() {
@@ -756,16 +791,16 @@ void MainWindow::onSpecialRequested() {
 
   QMenu menu(this);
   const QList<QPair<QString, vynx::PayloadType>> kinds = {
-      {QStringLiteral("Wi-Fi сеть"), vynx::PayloadType::Wifi},
-      {QStringLiteral("Контакт (vCard)"), vynx::PayloadType::VCard},
-      {QStringLiteral("Email сообщение"), vynx::PayloadType::Email},
-      {QStringLiteral("Телефонный номер"), vynx::PayloadType::Phone},
-      {QStringLiteral("SMS сообщение"), vynx::PayloadType::Sms},
-      {QStringLiteral("Геолокация (Geo)"), vynx::PayloadType::Geo},
-      {QStringLiteral("Событие календаря"), vynx::PayloadType::Event},
-      {QStringLiteral("2FA код (TOTP)"), vynx::PayloadType::Totp},
-      {QStringLiteral("Криптовалюта (Crypto)"), vynx::PayloadType::Crypto},
-      {QStringLiteral("Оплата по реквизитам / СБП"), vynx::PayloadType::Payment},
+      {I18n::tr("Wi-Fi network"), vynx::PayloadType::Wifi},
+      {I18n::tr("Contact (vCard)"), vynx::PayloadType::VCard},
+      {I18n::tr("Email message"), vynx::PayloadType::Email},
+      {I18n::tr("Phone number"), vynx::PayloadType::Phone},
+      {I18n::tr("SMS message"), vynx::PayloadType::Sms},
+      {I18n::tr("Geolocation (Geo)"), vynx::PayloadType::Geo},
+      {I18n::tr("Calendar event"), vynx::PayloadType::Event},
+      {I18n::tr("2FA code (TOTP)"), vynx::PayloadType::Totp},
+      {I18n::tr("Cryptocurrency (Crypto)"), vynx::PayloadType::Crypto},
+      {I18n::tr("Bank payment / SBP"), vynx::PayloadType::Payment},
   };
   for (const auto &entry : kinds) {
     menu.addAction(entry.first, this, [this, entry] {
@@ -778,11 +813,11 @@ void MainWindow::onSpecialRequested() {
 
 void MainWindow::onScanMenuRequested() {
   QMenu menu(this);
-  menu.addAction(QStringLiteral("📷  Снимок области экрана (Ctrl+Shift+S)"), this,
+  menu.addAction(I18n::tr("📷  Screen capture (Ctrl+Shift+S)"), this,
                  &MainWindow::onStartScreenSnipping);
-  menu.addAction(QStringLiteral("📁  Сканировать из файла..."), this,
+  menu.addAction(I18n::tr("📁  Scan from file..."), this,
                  &MainWindow::onScanImageFile);
-  menu.addAction(QStringLiteral("📋  Распознать из буфера (Ctrl+Shift+V)"), this,
+  menu.addAction(I18n::tr("📋  Scan from clipboard (Ctrl+Shift+V)"), this,
                  &MainWindow::onScanFromClipboard);
   menu.exec(scanButton_->mapToGlobal(QPoint(0, scanButton_->height())));
 }
@@ -795,14 +830,14 @@ void MainWindow::onStartScreenSnipping() {
 
 void MainWindow::onScanImageFile() {
   const QString path = QFileDialog::getOpenFileName(
-      this, QStringLiteral("Выберите изображение с QR-кодом"), QString(),
-      QStringLiteral("Изображения (*.png *.jpg *.jpeg *.webp *.bmp)"));
+      this, I18n::tr("Select image with QR code"), QString(),
+      I18n::tr("Images (*.png *.jpg *.jpeg *.webp *.bmp)"));
   if (path.isEmpty()) {
     return;
   }
   QImage img(path);
   if (img.isNull()) {
-    showToast(QStringLiteral("Не удалось открыть изображение"));
+    showToast(I18n::tr("Failed to open image"));
     return;
   }
   img = img.convertToFormat(QImage::Format_RGBA8888);
@@ -812,12 +847,12 @@ void MainWindow::onScanImageFile() {
                                                       static_cast<uint32_t>(img.height()));
     const QString text = vynxq::toQString(result);
     if (text.isEmpty()) {
-      showToast(QStringLiteral("QR-код на изображении не найден"));
+      showToast(I18n::tr("QR code not found in image"));
       return;
     }
     onQrDecoded(text);
   } catch (const rust::Error &) {
-    showToast(QStringLiteral("QR-код не найден или поврежден"));
+    showToast(I18n::tr("QR code not found or corrupted"));
   }
 }
 
@@ -825,7 +860,7 @@ void MainWindow::onScanFromClipboard() {
   const QClipboard *clipboard = QApplication::clipboard();
   const QImage img = clipboard->image();
   if (img.isNull()) {
-    showToast(QStringLiteral("В буфере обмена нет изображения"));
+    showToast(I18n::tr("No image in clipboard"));
     return;
   }
   QImage formatted = img.convertToFormat(QImage::Format_RGBA8888);
@@ -835,12 +870,12 @@ void MainWindow::onScanFromClipboard() {
                                                       static_cast<uint32_t>(formatted.height()));
     const QString text = vynxq::toQString(result);
     if (text.isEmpty()) {
-      showToast(QStringLiteral("QR-код в изображении не найден"));
+      showToast(I18n::tr("QR code not found in image"));
       return;
     }
     onQrDecoded(text);
   } catch (const rust::Error &) {
-    showToast(QStringLiteral("QR-код не найден в буфере обмена"));
+    showToast(I18n::tr("QR code not found in clipboard"));
   }
 }
 
@@ -851,7 +886,7 @@ void MainWindow::onQrDecoded(const QString &text) {
     inputField_->setText(content);
     inputText_ = content;
     onSmartInputChanged();
-    showToast(QStringLiteral("Вставлено в генератор"));
+    showToast(I18n::tr("Inserted into generator"));
   });
   dialog->exec();
 }

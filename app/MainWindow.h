@@ -91,6 +91,7 @@ private:
   void buildComposer(QWidget *composer);
   void buildPreview(QWidget *pane);
   void wireShortcuts();
+  void retranslateUi();
 
   /// Re-render for the current state, if there is anything to render.
   void refresh();

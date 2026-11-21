@@ -8,11 +8,12 @@
 #include <QVBoxLayout>
 
 #include "Theme.h"
+#include "i18n/I18n.h"
 #include "platform/PlatformIntegration.h"
 
 UpdateDialog::UpdateDialog(const UpdateInfo &info, AutoUpdater *updater, QWidget *parent)
     : QDialog(parent), info_(info), updater_(updater) {
-  setWindowTitle(QStringLiteral("Обновление VYNX QR"));
+  setWindowTitle(I18n::tr("VYNX QR Update"));
   setModal(true);
   resize(460, 280);
 
@@ -21,19 +22,19 @@ UpdateDialog::UpdateDialog(const UpdateInfo &info, AutoUpdater *updater, QWidget
                               Tokens::SpaceXLarge, Tokens::SpaceLarge);
   layout->setSpacing(Tokens::SpaceMedium);
 
-  auto *headline = new QLabel(QStringLiteral("Доступна новая версия!"));
+  auto *headline = new QLabel(I18n::tr("New version available!"));
   headline->setProperty("role", QStringLiteral("heading"));
   layout->addWidget(headline);
 
-  auto *infoLabel = new QLabel(QStringLiteral("Доступна новая версия <b>%1</b> (текущая: %2).<br>"
-                                              "Хотите скачать и установить обновление?")
+  auto *infoLabel = new QLabel(I18n::tr("A new version <b>%1</b> is available (current: %2).<br>"
+                                        "Would you like to download and install the update?")
                                    .arg(info.version, PlatformIntegration::versionString()));
   infoLabel->setTextFormat(Qt::RichText);
   infoLabel->setWordWrap(true);
   layout->addWidget(infoLabel);
 
   if (!info.releaseNotes.isEmpty()) {
-    auto *notesLabel = new QLabel(QStringLiteral("Что нового:"));
+    auto *notesLabel = new QLabel(I18n::tr("What's new:"));
     notesLabel->setProperty("role", QStringLiteral("caption"));
     layout->addWidget(notesLabel);
 
@@ -58,12 +59,12 @@ UpdateDialog::UpdateDialog(const UpdateInfo &info, AutoUpdater *updater, QWidget
   auto *buttonBox = new QHBoxLayout();
   buttonBox->addStretch(1);
 
-  cancelButton_ = new QPushButton(QStringLiteral("Позже"), this);
+  cancelButton_ = new QPushButton(I18n::tr("Later"), this);
   cancelButton_->setProperty("flat", true);
   connect(cancelButton_, &QPushButton::clicked, this, &QDialog::reject);
   buttonBox->addWidget(cancelButton_);
 
-  updateButton_ = new QPushButton(QStringLiteral("Обновить"), this);
+  updateButton_ = new QPushButton(I18n::tr("Update"), this);
   updateButton_->setProperty("accent", true);
   connect(updateButton_, &QPushButton::clicked, this, &UpdateDialog::onUpdateClicked);
   buttonBox->addWidget(updateButton_);
@@ -74,8 +75,8 @@ UpdateDialog::UpdateDialog(const UpdateInfo &info, AutoUpdater *updater, QWidget
 void UpdateDialog::onUpdateClicked() {
   updateButton_->setEnabled(false);
   updateButton_->setVisible(false);
-  cancelButton_->setText(QStringLiteral("Отмена"));
-  statusLabel_->setText(QStringLiteral("Загрузка обновления..."));
+  cancelButton_->setText(I18n::tr("Cancel"));
+  statusLabel_->setText(I18n::tr("Downloading update..."));
   statusLabel_->setVisible(true);
   progressBar_->setVisible(true);
 
@@ -92,14 +93,14 @@ void UpdateDialog::onProgress(qint64 received, qint64 total) {
     progressBar_->setValue(percent);
     const double mbReceived = received / (1024.0 * 1024.0);
     const double mbTotal = total / (1024.0 * 1024.0);
-    statusLabel_->setText(QStringLiteral("Загрузка обновления: %1 МБ из %2 МБ (%3%)")
+    statusLabel_->setText(I18n::tr("Downloading update: %1 MB of %2 MB (%3%)")
                               .arg(QString::number(mbReceived, 'f', 1),
                                    QString::number(mbTotal, 'f', 1),
                                    QString::number(percent)));
   } else {
     progressBar_->setRange(0, 0); // Indeterminate
     const double mbReceived = received / (1024.0 * 1024.0);
-    statusLabel_->setText(QStringLiteral("Загрузка обновления: %1 МБ")
+    statusLabel_->setText(I18n::tr("Downloading update: %1 MB")
                               .arg(QString::number(mbReceived, 'f', 1)));
   }
 }
@@ -107,16 +108,16 @@ void UpdateDialog::onProgress(qint64 received, qint64 total) {
 void UpdateDialog::onFinished(const QString &filePath) {
   progressBar_->setRange(0, 100);
   progressBar_->setValue(100);
-  statusLabel_->setText(QStringLiteral("Установка обновления и перезапуск программы..."));
+  statusLabel_->setText(I18n::tr("Ready to install. VYNX QR will restart."));
   cancelButton_->setEnabled(false);
   AutoUpdater::installAndRestart(filePath);
 }
 
 void UpdateDialog::onError(const QString &errorMsg) {
   progressBar_->setVisible(false);
-  statusLabel_->setText(QStringLiteral("Не удалось скачать обновление: %1").arg(errorMsg));
-  cancelButton_->setText(QStringLiteral("Закрыть"));
-  updateButton_->setText(QStringLiteral("Открыть в браузере"));
+  statusLabel_->setText(I18n::tr("Failed to download update: %1").arg(errorMsg));
+  cancelButton_->setText(I18n::tr("Close"));
+  updateButton_->setText(I18n::tr("Open in browser"));
   updateButton_->setVisible(true);
   updateButton_->setEnabled(true);
   disconnect(updateButton_, &QPushButton::clicked, this, &UpdateDialog::onUpdateClicked);

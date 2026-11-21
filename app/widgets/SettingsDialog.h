@@ -29,9 +29,11 @@ signals:
   void settingsChanged(const vynx::Settings &settings);
 
 private:
+  void buildLanguage(QVBoxLayout *layout);
   void buildAppearance(QVBoxLayout *layout);
   void buildBehaviour(QVBoxLayout *layout);
   void buildExport(QVBoxLayout *layout);
+  void retranslateUi();
 
   /// Keep the clipboard options consistent with each other.
   ///
@@ -41,12 +43,18 @@ private:
 
   vynx::Settings settings_;
 
+  QLabel *languageTitle_ = nullptr;
+  QComboBox *language_ = nullptr;
+  QLabel *appearanceTitle_ = nullptr;
   QComboBox *theme_ = nullptr;
   QCheckBox *useAccent_ = nullptr;
+  QLabel *behaviourTitle_ = nullptr;
   QCheckBox *clipboardCheck_ = nullptr;
   QCheckBox *autoPaste_ = nullptr;
+  QLabel *exportTitle_ = nullptr;
   QComboBox *format_ = nullptr;
   QComboBox *size_ = nullptr;
   QComboBox *errorCorrection_ = nullptr;
   QComboBox *moduleStyle_ = nullptr;
+  QPushButton *closeButton_ = nullptr;
 };
