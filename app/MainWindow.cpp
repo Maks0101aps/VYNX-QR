@@ -146,7 +146,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   snipper_ = new ScreenSnipper(this);
   connect(snipper_, &ScreenSnipper::codeDecoded, this, &MainWindow::onQrDecoded);
-  connect(snipper_, &ScreenSnipper::scanFailed, this, &MainWindow::showToast);
+  connect(snipper_, &ScreenSnipper::decodeFailed, this, [this] {
+    showToast(QStringLiteral("QR-код не найден"));
+  });
 
   setAcceptDrops(true);
 

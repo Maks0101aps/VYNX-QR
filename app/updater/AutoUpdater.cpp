@@ -278,7 +278,7 @@ bool downloadFile(const QString &urlString, const QString &destPath,
 HttpResponse httpGet(const QString &urlString) {
   HttpResponse resp;
   QNetworkAccessManager manager;
-  QNetworkRequest request(QUrl(urlString));
+  QNetworkRequest request{QUrl(urlString)};
   request.setRawHeader("User-Agent", "VYNX-QR-Updater");
   request.setRawHeader("Accept", "application/vnd.github.v3+json");
   request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
@@ -302,7 +302,7 @@ bool downloadFile(const QString &urlString, const QString &destPath,
                   const std::function<void(qint64, qint64)> &progressCallback,
                   QString &errorOut) {
   QNetworkAccessManager manager;
-  QNetworkRequest request(QUrl(urlString));
+  QNetworkRequest request{QUrl(urlString)};
   request.setRawHeader("User-Agent", "VYNX-QR-Updater");
   request.setRawHeader("Accept", "application/octet-stream");
   request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
