@@ -97,8 +97,8 @@ SetupWindow::SetupWindow(const QString &payload, QWidget *parent)
   smallIcon->setPixmap(QPixmap(QStringLiteral(":/icons/vynx-qr.png")).scaled(27, 27, Qt::KeepAspectRatio, Qt::SmoothTransformation));
   brand->addWidget(smallIcon);
   brand->addSpacing(5);
-  brandLabel_ = label(QStringLiteral("VYNX QR"), "brand");
-  brand->addWidget(brandLabel_, 1);
+  auto *brandLabel = label(QStringLiteral("VYNX QR"), "brand");
+  brand->addWidget(brandLabel, 1);
   railLayout->addLayout(brand);
   railLayout->addSpacing(16);
 

@@ -31,18 +31,13 @@ pub enum ExportFormat {
     Svg,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AppLanguage {
+    #[default]
     En,
     Ru,
     Uk,
-}
-
-impl Default for AppLanguage {
-    fn default() -> Self {
-        Self::En
-    }
 }
 
 /// Missing fields fall back to the defaults, so a settings file written by an
