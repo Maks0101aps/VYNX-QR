@@ -449,13 +449,14 @@ private slots:
   }
 
   void autoUpdaterVersionComparisonWorks() {
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.1.5"), QStringLiteral("1.1.4")));
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("1.1.5"), QStringLiteral("1.1.4")));
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.2.0"), QStringLiteral("1.1.4")));
-    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v2.0.0"), QStringLiteral("1.1.4")));
-    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4"), QStringLiteral("1.1.4")));
-    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.3"), QStringLiteral("1.1.4")));
-    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.0.1"), QStringLiteral("1.1.4")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4.1"), QStringLiteral("1.1.4")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("1.1.5"), QStringLiteral("1.1.4.1")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v1.2.0"), QStringLiteral("1.1.4.1")));
+    QVERIFY(AutoUpdater::isNewerVersion(QStringLiteral("v2.0.0"), QStringLiteral("1.1.4.1")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4.1"), QStringLiteral("1.1.4.1")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.4"), QStringLiteral("1.1.4.1")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.1.3"), QStringLiteral("1.1.4.1")));
+    QVERIFY(!AutoUpdater::isNewerVersion(QStringLiteral("v1.0.1"), QStringLiteral("1.1.4.1")));
   }
 
   void i18nLanguageSwitchingWorks() {

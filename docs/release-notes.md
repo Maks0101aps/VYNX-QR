@@ -1,3 +1,12 @@
+# VYNX QR 1.1.4.1
+
+Hotfix release for the Windows auto-updater.
+
+### 🐛 Fixed
+- **Windows Auto-Updater Launch Fix**: Resolved an issue where updating on Windows resulted in a `Windows cannot find "\\"` error popup. The updater now generates a clean standalone batch script in `%TEMP%` (`vynx_updater.cmd`) that uses `ping` to wait for process exit and launches the silent installer without `cmd.exe` command line quote-escaping issues.
+
+---
+
 # VYNX QR 1.1.4
 
 This release adds multi-language localization across the entire application and installer, with English as the canonical default, alongside Russian and Ukrainian.
