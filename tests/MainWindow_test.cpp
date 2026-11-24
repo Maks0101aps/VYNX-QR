@@ -37,6 +37,7 @@
 #include <rust/cxx.h>
 
 #include "MainWindow.h"
+#include "Theme.h"
 #include "platform/PlatformIntegration.h"
 #include "widgets/ClipboardSuggestion.h"
 #include "widgets/CustomizePanel.h"
@@ -490,6 +491,18 @@ private slots:
     const rust::String decoded =
         vynx::decode_qr_rgba(slice, bitmap.width, bitmap.height);
     QCOMPARE(bridgeString(decoded), QStringLiteral("https://vynx.app/test"));
+  }
+
+  void themeTokensAndBrandPaletteValid() {
+    auto palette = makePalette(QStringLiteral("light"), QColor());
+    QCOMPARE(vynxBlue(), QColor("#6366F1")); // Modern brand purple
+    QVERIFY(palette.surface.isValid());
+    QVERIFY(palette.window.isValid());
+    QString qss = styleSheetFor(palette);
+    QVERIFY(qss.contains(QStringLiteral("QFrame[role=\"card\"]")));
+    QVERIFY(qss.contains(QStringLiteral("QPushButton[role=\"pill\"]")));
+    QVERIFY(qss.contains(QStringLiteral("QAbstractButton[role=\"styleCard\"]")));
+    QVERIFY(qss.contains(QStringLiteral("QToolButton[role=\"topBarButton\"]")));
   }
 
 private:

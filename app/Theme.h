@@ -21,6 +21,8 @@ inline constexpr int SpaceXLarge = 24;
 inline constexpr int RadiusSmall = 6;
 inline constexpr int RadiusMedium = 8;
 inline constexpr int RadiusLarge = 12;
+inline constexpr int RadiusCard = 12;
+inline constexpr int RadiusPill = 16;
 
 // The window is one screen tall at most; this keeps it sensible on a laptop.
 inline constexpr int WindowWidth = 960;
