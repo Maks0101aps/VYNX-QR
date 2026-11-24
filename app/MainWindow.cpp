@@ -2,7 +2,9 @@
 
 #include <QApplication>
 #include <QAbstractSpinBox>
+#include <QBuffer>
 #include <QButtonGroup>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QClipboard>
 #include <QCloseEvent>
@@ -408,6 +410,30 @@ void MainWindow::buildComposer(QWidget *composer) {
   connect(fgColorButton_, &QPushButton::clicked, this, [this] { onPickColor(true); });
   connect(bgColorButton_, &QPushButton::clicked, this, [this] { onPickColor(false); });
 
+  captionCheckbox_ = new QCheckBox(I18n::tr("Add text under QR code"), composerCard);
+  captionCheckbox_->setObjectName(QStringLiteral("captionCheckbox"));
+  captionCheckbox_->setCursor(Qt::PointingHandCursor);
+  cardLayout->addWidget(captionCheckbox_);
+
+  captionInput_ = new QLineEdit(composerCard);
+  captionInput_->setObjectName(QStringLiteral("captionInput"));
+  captionInput_->setPlaceholderText(I18n::tr("Enter caption..."));
+  captionInput_->setClearButtonEnabled(true);
+  captionInput_->hide();
+  cardLayout->addWidget(captionInput_);
+
+  connect(captionCheckbox_, &QCheckBox::toggled, this, [this](bool checked) {
+    captionInput_->setVisible(checked);
+    if (checked) {
+      captionInput_->setFocus();
+    }
+    updatePreviewCaption();
+  });
+
+  connect(captionInput_, &QLineEdit::textChanged, this, [this] {
+    updatePreviewCaption();
+  });
+
   // 5. Bottom buttons
   auto *bottomLayout = new QHBoxLayout;
   bottomLayout->setSpacing(Tokens::SpaceSmall);
@@ -555,14 +581,14 @@ void MainWindow::buildPreview(QWidget *pane) {
   auto *actions = new QHBoxLayout;
   actions->setSpacing(Tokens::SpaceSmall);
 
-  save_ = new QPushButton(I18n::tr("Save") + QStringLiteral(" ▾"), previewCard);
+  save_ = new QPushButton(QStringLiteral("⤓ ") + I18n::tr("Download (PNG)") + QStringLiteral(" ▾"), previewCard);
   save_->setProperty("accent", true);
   save_->setAccessibleName(QStringLiteral("Save QR code"));
   save_->setEnabled(false);
   save_->setCursor(Qt::PointingHandCursor);
   actions->addWidget(save_, 1);
 
-  copy_ = new QPushButton(I18n::tr("Copy"), previewCard);
+  copy_ = new QPushButton(QStringLiteral("📋 ") + I18n::tr("Copy"), previewCard);
   copy_->setAccessibleName(QStringLiteral("Copy QR code image to the clipboard"));
   copy_->setEnabled(false);
   copy_->setCursor(Qt::PointingHandCursor);
@@ -784,6 +810,7 @@ void MainWindow::refresh() {
     }
     current_ = result;
     preview_->showResult(current_);
+    updatePreviewCaption();
     copy_->setEnabled(true);
     save_->setEnabled(true);
   } catch (const rust::Error &error) {
@@ -819,12 +846,21 @@ void MainWindow::copyToClipboard() {
   try {
     const vynx::Bitmap bitmap =
         vynx::generate_bitmap(currentPayload(), currentOptions(customize_->exportSize()));
-    const QImage image(reinterpret_cast<const uchar *>(bitmap.pixels.data()),
-                       static_cast<int>(bitmap.width), static_cast<int>(bitmap.height),
-                       static_cast<qsizetype>(bitmap.width * 4), QImage::Format_RGBA8888);
-    QApplication::clipboard()->setImage(image.copy());
+    QImage image(reinterpret_cast<const uchar *>(bitmap.pixels.data()),
+                 static_cast<int>(bitmap.width), static_cast<int>(bitmap.height),
+                 static_cast<qsizetype>(bitmap.width * 4), QImage::Format_RGBA8888);
+    image = image.copy();
+    const QString caption = (captionCheckbox_ && captionCheckbox_->isChecked())
+        ? captionInput_->text().trimmed()
+        : QString();
+    if (!caption.isEmpty()) {
+      image = compositeWithCaption(image, caption, qrColor_, bgColor_);
+    }
+    QApplication::clipboard()->setImage(image);
     copy_->setText(QStringLiteral("✓ ") + I18n::tr("Copied!"));
-    QTimer::singleShot(1400, this, [this] { copy_->setText(I18n::tr("Copy")); });
+    QTimer::singleShot(1400, this, [this] {
+      if (copy_) copy_->setText(QStringLiteral("📋 ") + I18n::tr("Copy"));
+    });
   } catch (const rust::Error &error) {
     showError(vynxq::errorMessage(error));
   }
@@ -843,7 +879,7 @@ void MainWindow::onSaveAs() {
   menu.addAction(I18n::tr("SVG vector"), this, [this] {
     saveToDisk(vynx::ExportFormat::Svg);
   });
-  menu.exec(save_->mapToGlobal(QPoint(0, 0)));
+  menu.exec(save_->mapToGlobal(QPoint(0, save_->height())));
 }
 
 void MainWindow::saveToDisk() {
@@ -874,17 +910,34 @@ bool MainWindow::exportToFile(const QString &chosen, vynx::ExportFormat format) 
   const auto payload = currentPayload();
   const bool svg = format == vynx::ExportFormat::Svg;
   const auto size = customize_->exportSize();
+  const QString caption = (captionCheckbox_ && captionCheckbox_->isChecked())
+      ? captionInput_->text().trimmed()
+      : QString();
 
   try {
     QByteArray bytes;
     if (svg || chosen.endsWith(QStringLiteral(".svg"), Qt::CaseInsensitive)) {
-      bytes = vynxq::toQString(vynx::generate_svg(payload, currentOptions(size), size))
-                  .toUtf8();
+      QString svgStr = vynxq::toQString(vynx::generate_svg(payload, currentOptions(size), size));
+      if (!caption.isEmpty()) {
+        svgStr = compositeSvgWithCaption(svgStr, caption, qrColor_, bgColor_, size);
+      }
+      bytes = svgStr.toUtf8();
     } else {
       const vynx::GenerateResult result =
           vynx::generate(payload, currentOptions(size));
-      bytes = QByteArray(reinterpret_cast<const char *>(result.png.data()),
-                         static_cast<qsizetype>(result.png.size()));
+      QImage image = QImage::fromData(reinterpret_cast<const uchar *>(result.png.data()),
+                                      static_cast<int>(result.png.size()), "PNG");
+      if (!caption.isEmpty()) {
+        image = compositeWithCaption(image, caption, qrColor_, bgColor_);
+        QByteArray pngBytes;
+        QBuffer buffer(&pngBytes);
+        buffer.open(QIODevice::WriteOnly);
+        image.save(&buffer, "PNG");
+        bytes = pngBytes;
+      } else {
+        bytes = QByteArray(reinterpret_cast<const char *>(result.png.data()),
+                           static_cast<qsizetype>(result.png.size()));
+      }
     }
 
     QSaveFile file(chosen);
@@ -965,6 +1018,7 @@ void MainWindow::onPickColor(bool foreground) {
       bgColor_ = chosen;
     }
     updateColorSwatches();
+    updatePreviewCaption();
     ++generation_;
     refresh();
   }
@@ -979,6 +1033,122 @@ void MainWindow::updateColorSwatches() {
     bgColorButton_->setIcon(QIcon(makeColorSwatchPixmap(bgColor_)));
     bgColorButton_->setText(bgColor_.name().toUpper());
   }
+}
+
+void MainWindow::updatePreviewCaption() {
+  const QString caption = (captionCheckbox_ && captionCheckbox_->isChecked())
+      ? captionInput_->text().trimmed()
+      : QString();
+  if (preview_) {
+    preview_->setCaption(caption, qrColor_);
+  }
+}
+
+QImage MainWindow::compositeWithCaption(const QImage &qrImage, const QString &caption,
+                                        const QColor &fg, const QColor &bg) {
+  if (caption.isEmpty() || qrImage.isNull()) {
+    return qrImage;
+  }
+  const int w = qrImage.width();
+  const int h = qrImage.height();
+
+  int fontSize = std::max(14, static_cast<int>(w * 0.05));
+  QFont font(QStringLiteral("sans-serif"));
+  font.setPixelSize(fontSize);
+  font.setWeight(QFont::DemiBold);
+
+  QFontMetrics fm(font);
+  while (fontSize > 10 && fm.horizontalAdvance(caption) > w - 24) {
+    fontSize -= 2;
+    font.setPixelSize(fontSize);
+    fm = QFontMetrics(font);
+  }
+
+  const int textHeight = fm.height();
+  const int topPadding = std::max(8, static_cast<int>(fontSize * 0.5));
+  const int bottomPadding = std::max(10, static_cast<int>(fontSize * 0.7));
+  const int bannerHeight = textHeight + topPadding + bottomPadding;
+
+  const int totalHeight = h + bannerHeight;
+  QImage result(w, totalHeight, QImage::Format_RGBA8888);
+  result.fill(bg);
+
+  QPainter painter(&result);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  painter.setRenderHint(QPainter::TextAntialiasing, true);
+
+  painter.drawImage(0, 0, qrImage);
+
+  painter.setFont(font);
+  painter.setPen(fg);
+  const QRect textRect(0, h + topPadding, w, textHeight);
+  painter.drawText(textRect, Qt::AlignCenter | Qt::TextSingleLine, caption);
+  painter.end();
+
+  return result;
+}
+
+QString MainWindow::compositeSvgWithCaption(const QString &svgStr, const QString &caption,
+                                            const QColor &fg, const QColor &bg,
+                                            std::uint32_t sizePx) {
+  Q_UNUSED(sizePx);
+  if (caption.isEmpty()) {
+    return svgStr;
+  }
+
+  static const QRegularExpression heightRegex(QStringLiteral("height=\"(\\d+)\""));
+  static const QRegularExpression viewBoxRegex(QStringLiteral("viewBox=\"0 0 ([\\d\\.]+) ([\\d\\.]+)\""));
+
+  const auto heightMatch = heightRegex.match(svgStr);
+  const auto viewBoxMatch = viewBoxRegex.match(svgStr);
+
+  if (!heightMatch.hasMatch() || !viewBoxMatch.hasMatch()) {
+    return svgStr;
+  }
+
+  const double origHeightPx = heightMatch.captured(1).toDouble();
+  const double origVbWidth = viewBoxMatch.captured(1).toDouble();
+  const double origVbHeight = viewBoxMatch.captured(2).toDouble();
+
+  const double fontSizePx = std::max(14.0, origHeightPx * 0.05);
+  const double bannerHeightPx = fontSizePx * 2.2;
+  const double newHeightPx = origHeightPx + bannerHeightPx;
+
+  const double scale = origVbHeight / origHeightPx;
+  const double bannerHeightVb = bannerHeightPx * scale;
+  const double newVbHeight = origVbHeight + bannerHeightVb;
+  const double fontSizeVb = fontSizePx * scale;
+  const double textY = origVbHeight + (bannerHeightVb * 0.68);
+  const double textX = origVbWidth / 2.0;
+
+  QString modified = svgStr;
+  modified.replace(heightMatch.capturedStart(), heightMatch.capturedLength(),
+                   QStringLiteral("height=\"%1\"").arg(static_cast<int>(newHeightPx)));
+
+  const auto newVbMatch = viewBoxRegex.match(modified);
+  if (newVbMatch.hasMatch()) {
+    modified.replace(newVbMatch.capturedStart(), newVbMatch.capturedLength(),
+                     QStringLiteral("viewBox=\"0 0 %1 %2\"").arg(origVbWidth).arg(newVbHeight, 0, 'f', 2));
+  }
+
+  const int closeSvgIdx = modified.lastIndexOf(QStringLiteral("</svg>"));
+  if (closeSvgIdx != -1) {
+    const QString elements = QStringLiteral(
+        "  <rect x=\"0\" y=\"%1\" width=\"%2\" height=\"%3\" fill=\"%4\"/>\n"
+        "  <text x=\"%5\" y=\"%6\" font-family=\"sans-serif\" font-size=\"%7\" font-weight=\"600\" fill=\"%8\" text-anchor=\"middle\">%9</text>\n")
+        .arg(origVbHeight, 0, 'f', 2)
+        .arg(origVbWidth, 0, 'f', 2)
+        .arg(bannerHeightVb, 0, 'f', 2)
+        .arg(bg.name())
+        .arg(textX, 0, 'f', 2)
+        .arg(textY, 0, 'f', 2)
+        .arg(fontSizeVb, 0, 'f', 2)
+        .arg(fg.name())
+        .arg(caption.toHtmlEscaped());
+    modified.insert(closeSvgIdx, elements);
+  }
+
+  return modified;
 }
 
 void MainWindow::retranslateUi() {
@@ -1007,11 +1177,13 @@ void MainWindow::retranslateUi() {
   if (styleSelector_) styleSelector_->retranslateUi();
   if (fgColorLabel_) fgColorLabel_->setText(I18n::tr("QR Color"));
   if (bgColorLabel_) bgColorLabel_->setText(I18n::tr("Background Color"));
+  if (captionCheckbox_) captionCheckbox_->setText(I18n::tr("Add text under QR code"));
+  if (captionInput_) captionInput_->setPlaceholderText(I18n::tr("Enter caption..."));
 
   if (generateButton_) generateButton_->setText(I18n::tr("Generate QR code"));
   if (clear_) clear_->setText(I18n::tr("Clear"));
-  if (copy_) copy_->setText(I18n::tr("Copy"));
-  if (save_) save_->setText(I18n::tr("Save") + QStringLiteral(" ▾"));
+  if (copy_) copy_->setText(QStringLiteral("📋 ") + I18n::tr("Copy"));
+  if (save_) save_->setText(QStringLiteral("⤓ ") + I18n::tr("Download (PNG)") + QStringLiteral(" ▾"));
 }
 
 void MainWindow::applyTheme() {

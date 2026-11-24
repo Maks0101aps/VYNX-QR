@@ -11,6 +11,7 @@
 
 class QAbstractButton;
 class QButtonGroup;
+class QCheckBox;
 class QFrame;
 class QLabel;
 class QLineEdit;
@@ -103,6 +104,12 @@ private:
   void buildPreview(QWidget *pane);
   void setupMoreMenu();
   void updateColorSwatches();
+  void updatePreviewCaption();
+  static QImage compositeWithCaption(const QImage &qrImage, const QString &caption,
+                                     const QColor &fg, const QColor &bg);
+  static QString compositeSvgWithCaption(const QString &svgStr, const QString &caption,
+                                         const QColor &fg, const QColor &bg,
+                                         std::uint32_t sizePx);
   void wireShortcuts();
   void retranslateUi();
 
@@ -203,6 +210,8 @@ private:
   QPushButton *bgColorButton_ = nullptr;
   QColor qrColor_ = QColor("#000000");
   QColor bgColor_ = QColor("#FFFFFF");
+  QCheckBox *captionCheckbox_ = nullptr;
+  QLineEdit *captionInput_ = nullptr;
 
   // Action buttons
   QPushButton *generateButton_ = nullptr;

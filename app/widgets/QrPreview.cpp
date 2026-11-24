@@ -68,6 +68,17 @@ QrPreview::QrPreview(QWidget *parent) : QWidget(parent) {
   image_->setAcceptDrops(false);
   column->addWidget(image_, 1);
 
+  captionLabel_ = new QLabel(this);
+  captionLabel_->setObjectName(QStringLiteral("captionLabel"));
+  captionLabel_->setAlignment(Qt::AlignCenter);
+  QFont cf = captionLabel_->font();
+  cf.setPointSize(14);
+  cf.setWeight(QFont::DemiBold);
+  captionLabel_->setFont(cf);
+  captionLabel_->setWordWrap(true);
+  captionLabel_->hide();
+  column->addWidget(captionLabel_);
+
   verification_ = new QLabel(this);
   verification_->setAlignment(Qt::AlignCenter);
   column->addWidget(verification_);
@@ -86,11 +97,13 @@ void QrPreview::release() {
   // Assigning an empty pixmap frees the decoded image rather than leaving the
   // previous one alive behind the label.
   image_->setPixmap(QPixmap());
+  captionLabel_->hide();
 }
 
 void QrPreview::showEmpty() {
   release();
   image_->setText(QStringLiteral("Paste or type anything"));
+  captionLabel_->hide();
   verification_->hide();
   details_->hide();
 }
@@ -98,6 +111,7 @@ void QrPreview::showEmpty() {
 void QrPreview::showError(const QString &message) {
   release();
   image_->setText(QStringLiteral("Nothing to show"));
+  captionLabel_->hide();
   setVerificationLabel(message, false);
   details_->hide();
 }
@@ -154,6 +168,25 @@ void QrPreview::showResult(const vynx::GenerateResult &result) {
 
   details_->setText(details.join(QStringLiteral(" · ")));
   details_->show();
+  updateCaptionDisplay();
+}
+
+void QrPreview::setCaption(const QString &caption, const QColor &color) {
+  captionText_ = caption.trimmed();
+  if (color.isValid()) {
+    captionColor_ = color;
+  }
+  updateCaptionDisplay();
+}
+
+void QrPreview::updateCaptionDisplay() {
+  if (captionText_.isEmpty() || image_->pixmap().isNull()) {
+    captionLabel_->hide();
+  } else {
+    captionLabel_->setText(captionText_);
+    captionLabel_->setStyleSheet(QStringLiteral("color: %1;").arg(captionColor_.name()));
+    captionLabel_->show();
+  }
 }
 
 void QrPreview::dragEnterEvent(QDragEnterEvent *event) {

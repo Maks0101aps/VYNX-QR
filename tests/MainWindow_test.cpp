@@ -18,6 +18,7 @@
 
 #include <QApplication>
 #include <QAbstractSpinBox>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QFile>
@@ -621,6 +622,61 @@ private slots:
     // Since menu was cancelled without picking an action, wifiPill remains checked
     QVERIFY(wifiPill->isChecked());
     QVERIFY(!morePill->isChecked());
+  }
+
+  void captionUnderQrCodeExportedAndCopied() {
+    MainWindow window;
+    present(window);
+
+    enter(smartInput(window), QStringLiteral("github.com"));
+    QVERIFY(window.currentResult().width > 0);
+
+    auto *captionBox = window.findChild<QCheckBox *>(QStringLiteral("captionCheckbox"));
+    QVERIFY2(captionBox != nullptr, "caption checkbox must exist in settings");
+    auto *captionInput = window.findChild<QLineEdit *>(QStringLiteral("captionInput"));
+    QVERIFY2(captionInput != nullptr, "caption line edit must exist");
+
+    QVERIFY(!captionBox->isChecked());
+    QVERIFY(!captionInput->isVisible());
+
+    captionBox->setChecked(true);
+    QVERIFY(captionInput->isVisible());
+
+    captionInput->setText(QStringLiteral("Scan me"));
+    QTest::qWait(50);
+
+    // Verify copy to clipboard includes caption (height > width)
+    window.onCopy();
+    const QImage copyImage = QApplication::clipboard()->image();
+    QVERIFY(!copyImage.isNull());
+    QVERIFY2(copyImage.height() > copyImage.width(), "copied image must include caption banner");
+
+    // Verify export PNG includes caption
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pngPath = dir.filePath(QStringLiteral("caption_test.png"));
+    QVERIFY(window.exportToFile(pngPath, vynx::ExportFormat::Png));
+    const QImage pngImage(pngPath);
+    QVERIFY(!pngImage.isNull());
+    QVERIFY2(pngImage.height() > pngImage.width(), "exported PNG image must include caption banner");
+
+    // Verify export SVG includes caption and <text>
+    const QString svgPath = dir.filePath(QStringLiteral("caption_test.svg"));
+    QVERIFY(window.exportToFile(svgPath, vynx::ExportFormat::Svg));
+    QFile svgFile(svgPath);
+    QVERIFY(svgFile.open(QIODevice::ReadOnly));
+    const QString svgContent = QString::fromUtf8(svgFile.readAll());
+    QVERIFY(svgContent.contains(QStringLiteral("Scan me")));
+    QVERIFY(svgContent.contains(QStringLiteral("<text")));
+
+    // When unchecked, export returns to square
+    captionBox->setChecked(false);
+    window.onCopy();
+    const QImage uncheckImage = QApplication::clipboard()->image();
+    QVERIFY(!uncheckImage.isNull());
+    QCOMPARE(uncheckImage.height(), uncheckImage.width());
+
+    QApplication::clipboard()->clear();
   }
 
 private:

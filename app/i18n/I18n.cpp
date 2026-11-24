@@ -84,6 +84,9 @@ const std::unordered_map<std::string_view, const char *> kRussian = {
     {"Select QR Color", "Выберите цвет QR-кода"},
     {"Select Background Color", "Выберите цвет фона"},
     {"Enter text to encode...", "Введите текст для кодирования..."},
+    {"Add text under QR code", "Добавить текст под QR-кодом"},
+    {"Enter caption...", "Введите текст под кодом..."},
+    {"Download (PNG)", "Скачать (PNG)"},
 
     // AboutDialog
     {"About VYNX QR", "О программе VYNX QR"},
@@ -328,6 +331,9 @@ const std::unordered_map<std::string_view, const char *> kUkrainian = {
     {"Select QR Color", "Оберіть колір QR-коду"},
     {"Select Background Color", "Оберіть колір фону"},
     {"Enter text to encode...", "Введіть текст для кодування..."},
+    {"Add text under QR code", "Додати текст під QR-кодом"},
+    {"Enter caption...", "Введіть текст під кодом..."},
+    {"Download (PNG)", "Завантажити (PNG)"},
 
     // AboutDialog
     {"About VYNX QR", "Про програму VYNX QR"},
