@@ -9,6 +9,7 @@
 
 #include "vynx-qr-bridge/src/lib.rs.h"
 
+class QAbstractButton;
 class QButtonGroup;
 class QFrame;
 class QLabel;
@@ -182,6 +183,7 @@ private:
   QPushButton *wifiPill_ = nullptr;
   QPushButton *morePill_ = nullptr;
   QMenu *moreMenu_ = nullptr;
+  QAbstractButton *lastActivePill_ = nullptr;
 
   QStackedWidget *composerStack_ = nullptr;
   QWidget *smartPage_ = nullptr;

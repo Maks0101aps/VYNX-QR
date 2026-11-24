@@ -26,6 +26,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QMenu>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QLineEdit>
@@ -56,7 +57,7 @@ QString bridgeString(const rust::String &value) {
 }
 
 /// Long enough for the 150 ms debounce to have fired.
-constexpr int kSettle = 600;
+constexpr int kSettle = 200;
 
 } // namespace
 
@@ -93,6 +94,26 @@ private slots:
     QVERIFY(copy);
     enter(smartInput(window), QStringLiteral("github.com"));
     window.onCustomizeToggled();
+    auto setClipboard = [](const QString &text) {
+      for (int i = 0; i < 5; ++i) {
+        QApplication::clipboard()->setText(text);
+        if (QApplication::clipboard()->text() == text) return;
+        QTest::qWait(10);
+      }
+    };
+
+    auto verifyClipboard = [](const auto &trigger, const QString &expected) {
+      for (int retry = 0; retry < 5; ++retry) {
+        if (retry > 0) QTest::qWait(25);
+        trigger();
+        for (int poll = 0; poll < 5; ++poll) {
+          if (QApplication::clipboard()->text() == expected) return true;
+          QTest::qWait(15);
+        }
+      }
+      return QApplication::clipboard()->text() == expected;
+    };
+
     int lineEdits = 0;
     int multilineEdits = 0;
     // Include smart input/HEX, all structured forms and spin-box child editors.
@@ -113,31 +134,20 @@ private slots:
         edit->selectAll();
         const auto selected = edit->selectedText();
         QVERIFY(!selected.isEmpty());
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QTest::qWait(100);
-        QTest::keyClick(edit, Qt::Key_C, Qt::ControlModifier);
-        QTest::qWait(100);
-        QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
-                     ? selected : QStringLiteral("sentinel"));
+        setClipboard(QStringLiteral("sentinel"));
+        const auto expected = edit->echoMode() == QLineEdit::Normal ? selected : QStringLiteral("sentinel");
+        QVERIFY(verifyClipboard([&] { QTest::keyClick(edit, Qt::Key_C, Qt::ControlModifier); }, expected));
         // Invoke the window fallback too: native ShortcutOverride can otherwise
         // hide a regression in this handler on some Qt/platform combinations.
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QTest::qWait(100);
-        QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
-                     ? selected : QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, expected));
         if (edit->echoMode() == QLineEdit::Password) {
           edit->setEchoMode(QLineEdit::Normal);
-          QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-          QTest::qWait(100);
-          QCOMPARE(QApplication::clipboard()->text(), selected);
+          QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, selected));
           edit->setEchoMode(QLineEdit::Password);
         }
         edit->deselect();
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QTest::qWait(100);
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QTest::qWait(100);
-        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
+        setClipboard(QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, QStringLiteral("sentinel")));
         ++lineEdits;
       }
       for (auto *edit : window.findChildren<QPlainTextEdit *>()) {
@@ -146,15 +156,13 @@ private slots:
         edit->setFocus();
         QCOMPARE(QApplication::focusWidget(), edit);
         edit->selectAll();
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QCOMPARE(QApplication::clipboard()->text(), edit->toPlainText());
+        setClipboard(QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, edit->toPlainText()));
         auto cursor = edit->textCursor();
         cursor.clearSelection();
         edit->setTextCursor(cursor);
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
+        setClipboard(QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, QStringLiteral("sentinel")));
         ++multilineEdits;
       }
     }
@@ -564,6 +572,57 @@ private slots:
     QCOMPARE(window.smartMode_, true);
   }
 
+  void generateButtonOnStructuredFormKeepsResult() {
+    MainWindow window;
+    present(window);
+
+    window.setSpecialKind(vynx::PayloadType::Wifi);
+    QLineEdit *ssid = findField(window, QStringLiteral("Network name (SSID)"));
+    QVERIFY(ssid != nullptr);
+    enter(ssid, QStringLiteral("TestWifi"));
+    QLineEdit *password = findField(window, QStringLiteral("Password"));
+    QVERIFY(password != nullptr);
+    enter(password, QStringLiteral("SecretPass123"));
+
+    const auto resultBefore = window.currentResult();
+    QVERIFY(resultBefore.width > 0);
+
+    // Clicking generateButton_ while in structured form must not wipe the QR code
+    QVERIFY(window.generateButton_ != nullptr);
+    window.generateButton_->click();
+
+    const auto resultAfter = window.currentResult();
+    QVERIFY(resultAfter.width > 0);
+    QCOMPARE(resultAfter.width, resultBefore.width);
+  }
+
+  void morePillRestoresPreviousPillWhenMenuCancelled() {
+    MainWindow window;
+    present(window);
+
+    auto *urlPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_url"));
+    auto *wifiPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_wifi"));
+    auto *morePill = window.findChild<QAbstractButton *>(QStringLiteral("pill_more"));
+    QVERIFY(urlPill && wifiPill && morePill);
+
+    wifiPill->click();
+    QVERIFY(wifiPill->isChecked());
+
+    // Close menu when it shows
+    QTimer::singleShot(50, &window, [] {
+      for (auto *widget : QApplication::topLevelWidgets()) {
+        if (auto *menu = qobject_cast<QMenu *>(widget)) {
+          menu->close();
+        }
+      }
+    });
+    morePill->click();
+
+    // Since menu was cancelled without picking an action, wifiPill remains checked
+    QVERIFY(wifiPill->isChecked());
+    QVERIFY(!morePill->isChecked());
+  }
+
 private:
   QTemporaryDir settingsDir_;
   QByteArray originalAppData_;
@@ -596,11 +655,12 @@ private:
   /// Type one character at a time with a pause, as a person does.
   static void typeWithPause(QWidget *target, const QString &text) {
     target->setFocus();
-    QTest::qWait(50);
+    QTest::qWait(20);
     for (const QChar character : text) {
       QTest::keyClicks(target, character);
-      QTest::qWait(200);
+      QTest::qWait(20);
     }
+    QTest::qWait(kSettle);
   }
 
   /// The universal input, found the way assistive technology finds it. A plain

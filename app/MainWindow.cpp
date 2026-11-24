@@ -308,6 +308,7 @@ void MainWindow::buildComposer(QWidget *composer) {
   cardLayout->addLayout(pillsLayout);
 
   urlPill_->setChecked(true);
+  lastActivePill_ = urlPill_;
   setupMoreMenu();
 
   // 3. Dynamic input container (stacked)
@@ -452,6 +453,7 @@ void MainWindow::buildComposer(QWidget *composer) {
   // Wire pill actions
   connect(urlPill_, &QPushButton::clicked, this, [this] {
     setComposerMode(true);
+    lastActivePill_ = urlPill_;
     leadingIconLabel_->setText(QStringLiteral("🔗"));
     inputField_->setPlaceholderText(QStringLiteral("https://example.com"));
     inputField_->setFocus();
@@ -459,6 +461,7 @@ void MainWindow::buildComposer(QWidget *composer) {
 
   connect(textPill_, &QPushButton::clicked, this, [this] {
     setComposerMode(true);
+    lastActivePill_ = textPill_;
     leadingIconLabel_->setText(QStringLiteral("T"));
     inputField_->setPlaceholderText(I18n::tr("Enter text to encode..."));
     inputField_->setFocus();
@@ -476,6 +479,22 @@ void MainWindow::buildComposer(QWidget *composer) {
     setSpecialKind(vynx::PayloadType::Wifi);
   });
 
+  connect(morePill_, &QPushButton::clicked, this, [this] {
+    if (!moreMenu_) {
+      return;
+    }
+    QAction *chosen = moreMenu_->exec(morePill_->mapToGlobal(QPoint(0, morePill_->height())));
+    if (!chosen) {
+      if (lastActivePill_) {
+        lastActivePill_->setChecked(true);
+      } else {
+        urlPill_->setChecked(true);
+      }
+    } else {
+      lastActivePill_ = morePill_;
+    }
+  });
+
   connect(inputField_, &QLineEdit::textChanged, this, [this](const QString &text) {
     inputText_ = text;
     ++generation_;
@@ -483,13 +502,23 @@ void MainWindow::buildComposer(QWidget *composer) {
   });
   connect(inputField_, &QLineEdit::returnPressed, this, &MainWindow::onSmartInputSubmitted);
   connect(originalToggle_, &QPushButton::clicked, this, &MainWindow::onToggleOriginal);
-  connect(generateButton_, &QPushButton::clicked, this, &MainWindow::onSmartInputSubmitted);
+  connect(generateButton_, &QPushButton::clicked, this, [this] {
+    if (smartMode_) {
+      onSmartInputSubmitted();
+    } else {
+      refresh();
+    }
+  });
   connect(clear_, &QPushButton::clicked, this, &MainWindow::onClearInput);
   connect(specialButton_, &QPushButton::clicked, this, &MainWindow::onSpecialRequested);
 }
 
 void MainWindow::setupMoreMenu() {
-  moreMenu_ = new QMenu(this);
+  if (!moreMenu_) {
+    moreMenu_ = new QMenu(this);
+  } else {
+    moreMenu_->clear();
+  }
   const QList<QPair<QString, vynx::PayloadType>> items = {
       {I18n::tr("SMS message"), vynx::PayloadType::Sms},
       {I18n::tr("Contact (vCard)"), vynx::PayloadType::VCard},
@@ -503,14 +532,9 @@ void MainWindow::setupMoreMenu() {
     moreMenu_->addAction(entry.first, this, [this, entry] {
       setSpecialKind(entry.second);
       morePill_->setChecked(true);
+      lastActivePill_ = morePill_;
     });
   }
-
-  connect(morePill_, &QPushButton::clicked, this, [this] {
-    if (moreMenu_) {
-      moreMenu_->exec(morePill_->mapToGlobal(QPoint(0, morePill_->height())));
-    }
-  });
 }
 
 void MainWindow::buildPreview(QWidget *pane) {
@@ -675,12 +699,16 @@ void MainWindow::setSpecialKind(vynx::PayloadType kind) {
   forms_->showKind(kind);
   if (kind == vynx::PayloadType::Wifi) {
     wifiPill_->setChecked(true);
+    lastActivePill_ = wifiPill_;
   } else if (kind == vynx::PayloadType::Email) {
     emailPill_->setChecked(true);
+    lastActivePill_ = emailPill_;
   } else if (kind == vynx::PayloadType::Phone) {
     phonePill_->setChecked(true);
+    lastActivePill_ = phonePill_;
   } else {
     morePill_->setChecked(true);
+    lastActivePill_ = morePill_;
   }
 }
 
@@ -973,6 +1001,7 @@ void MainWindow::retranslateUi() {
   if (phonePill_) phonePill_->setText(QStringLiteral("📞 ") + I18n::tr("Phone"));
   if (wifiPill_) wifiPill_->setText(QStringLiteral("📶 ") + I18n::tr("Wi-Fi"));
   if (morePill_) morePill_->setText(QStringLiteral("••• ") + I18n::tr("More") + QStringLiteral(" ▾"));
+  setupMoreMenu();
 
   if (styleHeading_) styleHeading_->setText(I18n::tr("QR Code Style"));
   if (styleSelector_) styleSelector_->retranslateUi();
@@ -1200,6 +1229,7 @@ void MainWindow::dropEvent(QDropEvent *event) {
 
 void MainWindow::onBackToSmart() {
   urlPill_->setChecked(true);
+  lastActivePill_ = urlPill_;
   setComposerMode(true);
 }
 
