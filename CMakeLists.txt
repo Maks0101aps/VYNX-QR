@@ -220,6 +220,8 @@ add_executable(VYNX_QR WIN32
   app/widgets/SettingsDialog.h
   app/widgets/SpecialQrForms.cpp
   app/widgets/SpecialQrForms.h
+  app/widgets/StyleSelectorWidget.cpp
+  app/widgets/StyleSelectorWidget.h
 )
 
 target_include_directories(VYNX_QR PRIVATE
@@ -314,6 +316,8 @@ if(VYNX_BUILD_TESTS AND VYNX_BUILD_WINDOW_TESTS)
     app/widgets/SettingsDialog.h
     app/widgets/SpecialQrForms.cpp
     app/widgets/SpecialQrForms.h
+    app/widgets/StyleSelectorWidget.cpp
+    app/widgets/StyleSelectorWidget.h
   )
   target_include_directories(vynx_window_test PRIVATE
     "${CMAKE_SOURCE_DIR}/app"

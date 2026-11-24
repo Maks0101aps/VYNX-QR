@@ -43,6 +43,7 @@
 #include "widgets/CustomizePanel.h"
 #include "widgets/QrPreview.h"
 #include "widgets/SpecialQrForms.h"
+#include "widgets/StyleSelectorWidget.h"
 #include "updater/AutoUpdater.h"
 #include "i18n/I18n.h"
 #include "vynx-qr-bridge/src/lib.rs.h"
@@ -113,23 +114,29 @@ private slots:
         const auto selected = edit->selectedText();
         QVERIFY(!selected.isEmpty());
         QApplication::clipboard()->setText(QStringLiteral("sentinel"));
+        QTest::qWait(100);
         QTest::keyClick(edit, Qt::Key_C, Qt::ControlModifier);
+        QTest::qWait(100);
         QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
                      ? selected : QStringLiteral("sentinel"));
         // Invoke the window fallback too: native ShortcutOverride can otherwise
         // hide a regression in this handler on some Qt/platform combinations.
         QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+        QTest::qWait(100);
         QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
                      ? selected : QStringLiteral("sentinel"));
         if (edit->echoMode() == QLineEdit::Password) {
           edit->setEchoMode(QLineEdit::Normal);
           QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+          QTest::qWait(100);
           QCOMPARE(QApplication::clipboard()->text(), selected);
           edit->setEchoMode(QLineEdit::Password);
         }
         edit->deselect();
         QApplication::clipboard()->setText(QStringLiteral("sentinel"));
+        QTest::qWait(100);
         QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
+        QTest::qWait(100);
         QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
         ++lineEdits;
       }
@@ -509,6 +516,52 @@ private slots:
     QVERIFY(qss.contains(QStringLiteral("QPushButton[role=\"pill\"]")));
     QVERIFY(qss.contains(QStringLiteral("QAbstractButton[role=\"styleCard\"]")));
     QVERIFY(qss.contains(QStringLiteral("QToolButton[role=\"topBarButton\"]")));
+  }
+
+  void styleSelectorSwitchesModes() {
+    MainWindow window;
+    present(window);
+
+    // Default style is Classic (Square)
+    QCOMPARE(window.currentOptions().module_style, vynx::ModuleStyle::Square);
+
+    auto *styleSelector = window.findChild<StyleSelectorWidget *>();
+    QVERIFY(styleSelector != nullptr);
+    QCOMPARE(styleSelector->selectedStyle(), vynx::ModuleStyle::Square);
+
+    // Switch to Dots
+    styleSelector->setStyle(vynx::ModuleStyle::Dots);
+    QCOMPARE(styleSelector->selectedStyle(), vynx::ModuleStyle::Dots);
+    QCOMPARE(window.currentOptions().module_style, vynx::ModuleStyle::Dots);
+
+    // Switch to Rounded
+    styleSelector->setStyle(vynx::ModuleStyle::Rounded);
+    QCOMPARE(styleSelector->selectedStyle(), vynx::ModuleStyle::Rounded);
+    QCOMPARE(window.currentOptions().module_style, vynx::ModuleStyle::Rounded);
+  }
+
+  void topBarAndPillNavigationWork() {
+    MainWindow window;
+    present(window);
+
+    // Theme toggle button exists and toggles theme
+    auto *themeToggle = window.findChild<QAbstractButton *>(QStringLiteral("themeToggle"));
+    QVERIFY(themeToggle != nullptr);
+    const auto initialTheme = window.settings_.theme;
+    themeToggle->click();
+    QVERIFY(window.settings_.theme != initialTheme);
+
+    // Category pills exist
+    auto *urlPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_url"));
+    auto *wifiPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_wifi"));
+    QVERIFY(urlPill != nullptr);
+    QVERIFY(wifiPill != nullptr);
+
+    wifiPill->click();
+    QCOMPARE(window.smartMode_, false);
+
+    urlPill->click();
+    QCOMPARE(window.smartMode_, true);
   }
 
 private:
