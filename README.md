@@ -103,12 +103,12 @@ Linux packages:
 
 ```bash
 # Debian 12 / Ubuntu 24.04
-sudo apt install ./vynx-qr_1.1.4.1_amd64.deb
+sudo apt install ./vynx-qr_1.2.0_amd64.deb
 # Arch Linux
-sudo pacman -U ./vynx-qr-1.1.4.1-1-x86_64.pkg.tar.zst
+sudo pacman -U ./vynx-qr-1.2.0-1-x86_64.pkg.tar.zst
 # AppImage, ordinary user
-chmod +x VYNX-QR-1.1.4.1-x86_64.AppImage
-./VYNX-QR-1.1.4.1-x86_64.AppImage
+chmod +x VYNX-QR-1.2.0-x86_64.AppImage
+./VYNX-QR-1.2.0-x86_64.AppImage
 ```
 
 Verify `SHA256SUMS.txt` before installing. DEB and Arch use distro Qt; AppImage

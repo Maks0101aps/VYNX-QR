@@ -493,6 +493,58 @@ private slots:
     I18n::instance().setLanguage(I18n::Language::English);
   }
 
+  void testAllNewUiStringsTranslatedInAllLanguages() {
+    for (const auto &lang : {I18n::Language::English, I18n::Language::Russian, I18n::Language::Ukrainian}) {
+      I18n::instance().setLanguage(lang);
+      QVERIFY(!I18n::tr("create_qr_code").isEmpty());
+      QVERIFY(!I18n::tr("style_classic").isEmpty());
+      QVERIFY(!I18n::tr("style_rounded").isEmpty());
+      QVERIFY(!I18n::tr("style_dots").isEmpty());
+      QVERIFY(!I18n::tr("add_text_under_qr").isEmpty());
+      QVERIFY(!I18n::tr("download_png").isEmpty());
+      QVERIFY(I18n::instance().hasTranslation("create_qr_code", lang));
+      QVERIFY(I18n::instance().hasTranslation("style_classic", lang));
+      QVERIFY(I18n::instance().hasTranslation("style_rounded", lang));
+      QVERIFY(I18n::instance().hasTranslation("style_dots", lang));
+      QVERIFY(I18n::instance().hasTranslation("add_text_under_qr", lang));
+      QVERIFY(I18n::instance().hasTranslation("download_png", lang));
+      QVERIFY(I18n::instance().hasTranslation("Clear", lang));
+    }
+
+    // Russian verification
+    I18n::instance().setLanguage(I18n::Language::Russian);
+    QCOMPARE(I18n::tr("create_qr_code"), QStringLiteral("Создать QR-код"));
+    QCOMPARE(I18n::tr("style_classic"), QStringLiteral("Классический"));
+    QCOMPARE(I18n::tr("style_rounded"), QStringLiteral("Закруглённый"));
+    QCOMPARE(I18n::tr("style_dots"), QStringLiteral("Точки"));
+    QCOMPARE(I18n::tr("add_text_under_qr"), QStringLiteral("Добавить текст под QR-кодом"));
+    QCOMPARE(I18n::tr("download_png"), QStringLiteral("Скачать (PNG)"));
+    QCOMPARE(I18n::tr("Clear"), QStringLiteral("Очистить"));
+
+    // Ukrainian verification
+    I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    QCOMPARE(I18n::tr("create_qr_code"), QStringLiteral("Створити QR-код"));
+    QCOMPARE(I18n::tr("style_classic"), QStringLiteral("Класичний"));
+    QCOMPARE(I18n::tr("style_rounded"), QStringLiteral("Округлий"));
+    QCOMPARE(I18n::tr("style_dots"), QStringLiteral("Точки"));
+    QCOMPARE(I18n::tr("add_text_under_qr"), QStringLiteral("Додати текст під QR-кодом"));
+    QCOMPARE(I18n::tr("download_png"), QStringLiteral("Завантажити (PNG)"));
+    QCOMPARE(I18n::tr("Clear"), QStringLiteral("Очистити"));
+
+    // English verification
+    I18n::instance().setLanguage(I18n::Language::English);
+    QCOMPARE(I18n::tr("create_qr_code"), QStringLiteral("Create QR code"));
+    QCOMPARE(I18n::tr("style_classic"), QStringLiteral("Classic"));
+    QCOMPARE(I18n::tr("style_rounded"), QStringLiteral("Rounded"));
+    QCOMPARE(I18n::tr("style_dots"), QStringLiteral("Dots"));
+    QCOMPARE(I18n::tr("add_text_under_qr"), QStringLiteral("Add text under QR code"));
+    QCOMPARE(I18n::tr("download_png"), QStringLiteral("Download (PNG)"));
+    QCOMPARE(I18n::tr("Clear"), QStringLiteral("Clear"));
+
+    // Reset back to English
+    I18n::instance().setLanguage(I18n::Language::English);
+  }
+
   void decodeQrCodeFromImage() {
     MainWindow window;
     present(window);

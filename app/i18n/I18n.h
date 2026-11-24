@@ -16,6 +16,7 @@ public:
   [[nodiscard]] Language language() const;
 
   [[nodiscard]] QString translate(const char *sourceText) const;
+  [[nodiscard]] bool hasTranslation(const char *sourceText, Language lang) const;
 
   static QString tr(const char *sourceText) {
     return instance().translate(sourceText);
