@@ -229,6 +229,31 @@ fn rounded_modules_still_verify() {
     );
 }
 
+#[test]
+fn dots_style_rasterizes_and_scans() {
+    let request = RenderRequest {
+        payload: QrPayload::Text {
+            text: "https://vynx.org".into(),
+        },
+        style: QrStyle {
+            foreground: "#000000".into(),
+            background: "#ffffff".into(),
+            module_style: vynx_qr_core::qr::payload::ModuleStyle::Dots,
+            quiet_zone: 4,
+            logo: None,
+            ..QrStyle::default()
+        },
+        ec_level: EcLevel::M,
+        size_px: 512,
+    };
+    let result = vynx_qr_core::export::render_png(&request).expect("render should succeed");
+    assert_eq!(
+        result.verification.status,
+        VerifyStatus::Verified,
+        "Dots style QR code must be verified and readable by rqrr"
+    );
+}
+
 /// A minimal valid PNG, used wherever a logo is needed.
 fn logo_png() -> Vec<u8> {
     use vynx_qr_core::qr::render::{encode_png, Canvas};
