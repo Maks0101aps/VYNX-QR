@@ -33,9 +33,11 @@ inline const QColor DarkSuccess("#5BD65B");
 inline const QColor DarkWarning("#F2B441");
 inline const QColor DarkDanger("#FF8A80");
 
-/// Dark mode needs a readable foreground on a light accent and vice versa.
+/// Determine a readable foreground on a light or dark background using relative luminance.
 QColor readableOn(const QColor &background) {
-  return background.lightness() > 140 ? QColor("#101010") : QColor("#FFFFFF");
+  // WCAG relative luminance approximation
+  const double lum = 0.2126 * background.redF() + 0.7152 * background.greenF() + 0.0722 * background.blueF();
+  return lum > 0.45 ? QColor("#101010") : QColor("#FFFFFF");
 }
 
 } // namespace
@@ -210,7 +212,7 @@ QToolButton[role="topBarButton"]:pressed:enabled, QPushButton[role="topBarButton
 QToolButton[role="clearButton"], QPushButton[role="clearButton"] {
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-radius: {{RADIUS_ACTION_CIRCLE}}px;
   padding: 2px;
   color: {{TEXT_TERTIARY}};
 }
@@ -254,6 +256,7 @@ QToolTip {
   qss.replace(QStringLiteral("{{RADIUS_LARGE}}"), QString::number(Tokens::RadiusLarge));
   qss.replace(QStringLiteral("{{RADIUS_CARD}}"), QString::number(Tokens::RadiusCard));
   qss.replace(QStringLiteral("{{RADIUS_PILL}}"), QString::number(Tokens::RadiusPill));
+  qss.replace(QStringLiteral("{{RADIUS_ACTION_CIRCLE}}"), QString::number(Tokens::RadiusActionCircle));
 
   return qss;
 }

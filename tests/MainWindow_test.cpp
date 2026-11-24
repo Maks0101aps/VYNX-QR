@@ -498,6 +498,12 @@ private slots:
     QCOMPARE(vynxBlue(), QColor("#6366F1")); // Modern brand purple
     QVERIFY(palette.surface.isValid());
     QVERIFY(palette.window.isValid());
+    QCOMPARE(palette.accentText, QColor("#FFFFFF"));
+
+    auto darkPalette = makePalette(QStringLiteral("dark"), QColor());
+    QVERIFY(darkPalette.isDark());
+    QCOMPARE(darkPalette.accentText, QColor("#FFFFFF"));
+
     QString qss = styleSheetFor(palette);
     QVERIFY(qss.contains(QStringLiteral("QFrame[role=\"card\"]")));
     QVERIFY(qss.contains(QStringLiteral("QPushButton[role=\"pill\"]")));
