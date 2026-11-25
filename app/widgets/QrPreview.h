@@ -2,6 +2,7 @@
 
 #include <QLabel>
 #include <QWidget>
+#include <QColor>
 
 #include "vynx-qr-bridge/src/lib.rs.h"
 
@@ -35,6 +36,12 @@ public:
   /// around while the user is still typing.
   void release();
 
+  /// Set the caption text and foreground color shown under the QR code.
+  void setCaption(const QString &caption, const QColor &color = QColor());
+
+  /// Get current caption text.
+  [[nodiscard]] QString caption() const { return captionText_; }
+
 protected:
   void dragEnterEvent(QDragEnterEvent *event) override;
   void dropEvent(QDropEvent *event) override;
@@ -45,9 +52,14 @@ signals:
 
 private:
   void setVerificationLabel(const QString &text, bool good);
+  void updateCaptionDisplay();
 
   QLabel *image_ = nullptr;
+  QLabel *captionLabel_ = nullptr;
   QLabel *verification_ = nullptr;
   QLabel *details_ = nullptr;
   QHBoxLayout *layout_ = nullptr;
+
+  QString captionText_;
+  QColor captionColor_ = QColor("#000000");
 };

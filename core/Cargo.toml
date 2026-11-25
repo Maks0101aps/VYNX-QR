@@ -1,6 +1,6 @@
 [package]
 name = "vynx-qr-core"
-version = "1.1.4"
+version = "1.2.0"
 description = "QR engine for VYNX QR: payload encoders, matrix building, raster and vector rendering, and scan verification."
 authors = ["Maks0101aps"]
 license-file = "../LICENSE"

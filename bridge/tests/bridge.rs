@@ -132,6 +132,15 @@ fn generate_returns_png_bytes_and_a_verified_status() {
 }
 
 #[test]
+fn generate_supports_dots_module_style() {
+    let mut style = default_style();
+    style.module_style = ModuleStyle::Dots;
+    let result = generate(&text_payload("https://vynx.org"), &style).expect("generate");
+    assert_eq!(&result.png[..4], b"\x89PNG");
+    assert!(result.verification_status == VerifyStatus::Verified);
+}
+
+#[test]
 fn generate_svg_is_a_real_vector_document() {
     let document = generate_svg(&text_payload("VYNX QR"), &default_style(), 512).expect("svg");
     assert!(document.contains("<svg"));

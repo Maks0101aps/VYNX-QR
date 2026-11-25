@@ -5,6 +5,15 @@
 
 namespace {
 
+const std::unordered_map<std::string_view, const char *> kEnglish = {
+    {"create_qr_code", "Create QR code"},
+    {"style_classic", "Classic"},
+    {"style_rounded", "Rounded"},
+    {"style_dots", "Dots"},
+    {"add_text_under_qr", "Add text under QR code"},
+    {"download_png", "Download (PNG)"},
+};
+
 const std::unordered_map<std::string_view, const char *> kRussian = {
     // Common / Buttons
     {"Close", "Закрыть"},
@@ -24,6 +33,7 @@ const std::unordered_map<std::string_view, const char *> kRussian = {
     {"Error", "Ошибка"},
     {"Warning", "Предупреждение"},
     {"Information", "Информация"},
+    {"Clear", "Очистить"},
 
     // MainWindow
     {"VYNX QR", "VYNX QR"},
@@ -63,6 +73,36 @@ const std::unordered_map<std::string_view, const char *> kRussian = {
     {"2FA code (TOTP)", "2FA код (TOTP)"},
     {"Cryptocurrency (Crypto)", "Криптовалюта (Crypto)"},
     {"Bank payment / SBP", "Оплата по реквизитам / СБП"},
+    {"QR Generator", "QR Генератор"},
+    {"Create QR code", "Создать QR-код"},
+    {"create_qr_code", "Создать QR-код"},
+    {"Convert links, text, email, or phone numbers into QR codes",
+     "Превратите ссылки, текст, email или номер телефона в QR-код"},
+    {"Link", "Ссылка"},
+    {"Text", "Текст"},
+    {"Email", "Email"},
+    {"Phone", "Телефон"},
+    {"Wi-Fi", "Wi-Fi"},
+    {"More", "Ещё"},
+    {"QR Code Style", "Стиль QR-кода"},
+    {"Classic", "Классический"},
+    {"style_classic", "Классический"},
+    {"Rounded", "Закруглённый"},
+    {"style_rounded", "Закруглённый"},
+    {"Dots", "Точки"},
+    {"style_dots", "Точки"},
+    {"QR Color", "Цвет кода"},
+    {"Background Color", "Цвет фона"},
+    {"Generate QR code", "Сгенерировать QR-код"},
+    {"Toggle theme", "Сменить тему"},
+    {"Select QR Color", "Выберите цвет QR-кода"},
+    {"Select Background Color", "Выберите цвет фона"},
+    {"Enter text to encode...", "Введите текст для кодирования..."},
+    {"Add text under QR code", "Добавить текст под QR-кодом"},
+    {"add_text_under_qr", "Добавить текст под QR-кодом"},
+    {"Enter caption...", "Введите текст под кодом..."},
+    {"Download (PNG)", "Скачать (PNG)"},
+    {"download_png", "Скачать (PNG)"},
 
     // AboutDialog
     {"About VYNX QR", "О программе VYNX QR"},
@@ -82,6 +122,7 @@ const std::unordered_map<std::string_view, const char *> kRussian = {
      "Доступна новая версия <b>%1</b> (текущая: %2).<br>Хотите скачать и установить обновление?"},
     {"What's new:", "Что нового:"},
     {"Downloading update...", "Загрузка обновления..."},
+    {"Downloading update: %1 MB", "Загрузка обновления: %1 МБ"},
     {"Downloading update: %1 MB of %2 MB (%3%)", "Загрузка обновления: %1 МБ из %2 МБ (%3%)"},
     {"Ready to install. VYNX QR will restart.", "Готово к установке. VYNX QR будет перезапущен."},
     {"Failed to download update: %1", "Не удалось загрузить обновление: %1"},
@@ -114,9 +155,11 @@ const std::unordered_map<std::string_view, const char *> kRussian = {
     {"Longitude", "Долгота"},
     {"Query or address", "Поисковый запрос или адрес"},
     {"Event title", "Название события"},
+    {"Team Meeting / Sync", "Встреча команды / Синхронизация"},
     {"Start time (YYYYMMDDTHHMMSSZ)", "Начало (YYYYMMDDTHHMMSSZ)"},
     {"End time (YYYYMMDDTHHMMSSZ)", "Окончание (YYYYMMDDTHHMMSSZ)"},
     {"Location", "Место проведения"},
+    {"Conference Room / Online", "Конференц-зал / Онлайн"},
     {"Description", "Описание"},
     {"Secret key (Base32)", "Секретный ключ (Base32)"},
     {"Used to generate two-factor authentication codes.", "Используется для генерации кодов двухфакторной аутентификации."},
@@ -247,6 +290,7 @@ const std::unordered_map<std::string_view, const char *> kUkrainian = {
     {"Error", "Помилка"},
     {"Warning", "Попередження"},
     {"Information", "Інформація"},
+    {"Clear", "Очистити"},
 
     // MainWindow
     {"VYNX QR", "VYNX QR"},
@@ -286,6 +330,36 @@ const std::unordered_map<std::string_view, const char *> kUkrainian = {
     {"2FA code (TOTP)", "2FA код (TOTP)"},
     {"Cryptocurrency (Crypto)", "Криптовалюта (Crypto)"},
     {"Bank payment / SBP", "Оплата за реквізитами / СБП"},
+    {"QR Generator", "QR Генератор"},
+    {"Create QR code", "Створити QR-код"},
+    {"create_qr_code", "Створити QR-код"},
+    {"Convert links, text, email, or phone numbers into QR codes",
+     "Перетворіть посилання, текст, email або номер телефону на QR-код"},
+    {"Link", "Посилання"},
+    {"Text", "Текст"},
+    {"Email", "Email"},
+    {"Phone", "Телефон"},
+    {"Wi-Fi", "Wi-Fi"},
+    {"More", "Ще"},
+    {"QR Code Style", "Стиль коду"},
+    {"Classic", "Класичний"},
+    {"style_classic", "Класичний"},
+    {"Rounded", "Округлий"},
+    {"style_rounded", "Округлий"},
+    {"Dots", "Точки"},
+    {"style_dots", "Точки"},
+    {"QR Color", "Колір коду"},
+    {"Background Color", "Колір фону"},
+    {"Generate QR code", "Згенерувати QR-код"},
+    {"Toggle theme", "Змінити тему"},
+    {"Select QR Color", "Оберіть колір QR-коду"},
+    {"Select Background Color", "Оберіть колір фону"},
+    {"Enter text to encode...", "Введіть текст для кодування..."},
+    {"Add text under QR code", "Додати текст під QR-кодом"},
+    {"add_text_under_qr", "Додати текст під QR-кодом"},
+    {"Enter caption...", "Введіть текст під кодом..."},
+    {"Download (PNG)", "Завантажити (PNG)"},
+    {"download_png", "Завантажити (PNG)"},
 
     // AboutDialog
     {"About VYNX QR", "Про програму VYNX QR"},
@@ -305,6 +379,7 @@ const std::unordered_map<std::string_view, const char *> kUkrainian = {
      "Доступна нова версія <b>%1</b> (поточна: %2).<br>Бажаєте завантажити та встановити оновлення?"},
     {"What's new:", "Що нового:"},
     {"Downloading update...", "Завантаження оновлення..."},
+    {"Downloading update: %1 MB", "Завантаження оновлення: %1 МБ"},
     {"Downloading update: %1 MB of %2 MB (%3%)", "Завантаження оновлення: %1 МБ з %2 МБ (%3%)"},
     {"Ready to install. VYNX QR will restart.", "Готово до встановлення. VYNX QR буде перезапущено."},
     {"Failed to download update: %1", "Не вдалося завантажити оновлення: %1"},
@@ -337,9 +412,11 @@ const std::unordered_map<std::string_view, const char *> kUkrainian = {
     {"Longitude", "Довгота"},
     {"Query or address", "Пошуковий запит або адреса"},
     {"Event title", "Назва події"},
+    {"Team Meeting / Sync", "Зустріч команди / Синхронізація"},
     {"Start time (YYYYMMDDTHHMMSSZ)", "Початок (YYYYMMDDTHHMMSSZ)"},
     {"End time (YYYYMMDDTHHMMSSZ)", "Завершення (YYYYMMDDTHHMMSSZ)"},
     {"Location", "Місце проведення"},
+    {"Conference Room / Online", "Конференц-зал / Онлайн"},
     {"Description", "Опис"},
     {"Secret key (Base32)", "Секретний ключ (Base32)"},
     {"Used to generate two-factor authentication codes.", "Використовується для генерації кодів двофакторної автентифікації."},
@@ -468,13 +545,34 @@ I18n::Language I18n::language() const {
   return language_;
 }
 
+bool I18n::hasTranslation(const char *sourceText, Language lang) const {
+  if (!sourceText) return false;
+  const std::string_view key(sourceText);
+  if (lang == Language::English) {
+    return kEnglish.find(key) != kEnglish.end() ||
+           kRussian.find(key) != kRussian.end() ||
+           kUkrainian.find(key) != kUkrainian.end();
+  }
+  if (lang == Language::Russian) {
+    return kRussian.find(key) != kRussian.end();
+  }
+  if (lang == Language::Ukrainian) {
+    return kUkrainian.find(key) != kUkrainian.end();
+  }
+  return false;
+}
+
 QString I18n::translate(const char *sourceText) const {
   if (!sourceText) return QString();
+  const std::string_view key(sourceText);
   if (language_ == Language::English) {
+    const auto it = kEnglish.find(key);
+    if (it != kEnglish.end()) {
+      return QString::fromUtf8(it->second);
+    }
     return QString::fromUtf8(sourceText);
   }
 
-  const std::string_view key(sourceText);
   if (language_ == Language::Russian) {
     const auto it = kRussian.find(key);
     if (it != kRussian.end()) {

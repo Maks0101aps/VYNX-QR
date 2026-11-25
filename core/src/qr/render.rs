@@ -182,11 +182,19 @@ pub fn rasterize(matrix: &QrMatrix, style: &ResolvedStyle, size_px: u32) -> Canv
                 ModuleStyle::Rounded => {
                     fill_rounded_rect(&mut canvas, px, py, cell, cell, style.foreground);
                 }
+                ModuleStyle::Dots => {
+                    if !matrix.is_finder(x, y) {
+                        let radius = (cell as f32 * 0.45).max(0.5);
+                        let cx = px as f32 + cell as f32 / 2.0;
+                        let cy = py as f32 + cell as f32 / 2.0;
+                        fill_circle(&mut canvas, cx, cy, radius, style.foreground);
+                    }
+                }
             }
         }
     }
 
-    if style.module_style == ModuleStyle::Rounded {
+    if style.module_style == ModuleStyle::Rounded || style.module_style == ModuleStyle::Dots {
         draw_finders(matrix, style, cell, padding, &mut canvas);
     }
 
@@ -213,23 +221,29 @@ fn draw_finders(
         let side = 7 * cell;
         // Outer ring, inner gap and centre dot keep the position detection pattern
         // clearly readable even with rounded corners everywhere else.
-        fill_rounded_rect(canvas, x, y, side, side, style.foreground);
+        let outer_r = (cell as f32 * 0.9).round() as u32;
+        let inner_r = (cell as f32 * 0.7).round() as u32;
+        let center_r = (cell as f32 * 0.5).round() as u32;
+
+        fill_rounded_rect_radius(canvas, x, y, side, side, outer_r, style.foreground);
         let inset = cell;
-        fill_rounded_rect(
+        fill_rounded_rect_radius(
             canvas,
             x + inset,
             y + inset,
             side - 2 * inset,
             side - 2 * inset,
+            inner_r,
             style.background,
         );
         let inset = 2 * cell;
-        fill_rounded_rect(
+        fill_rounded_rect_radius(
             canvas,
             x + inset,
             y + inset,
             3 * cell,
             3 * cell,
+            center_r,
             style.foreground,
         );
     }
@@ -283,10 +297,34 @@ fn fill_rect(canvas: &mut Canvas, x: u32, y: u32, width: u32, height: u32, color
     }
 }
 
-/// Fill a rounded rectangle. `radius` is a quarter of the smaller side, which
-/// keeps the result recognisable at every module size.
-fn fill_rounded_rect(canvas: &mut Canvas, x: u32, y: u32, width: u32, height: u32, color: Rgba) {
-    let radius = (width.min(height) as f32 * 0.28).round() as u32;
+fn fill_circle(canvas: &mut Canvas, cx: f32, cy: f32, radius: f32, color: Rgba) {
+    let min_x = (cx - radius).floor().max(0.0) as u32;
+    let max_x = (cx + radius).ceil().min(canvas.width as f32) as u32;
+    let min_y = (cy - radius).floor().max(0.0) as u32;
+    let max_y = (cy + radius).ceil().min(canvas.height as f32) as u32;
+
+    let r2 = radius * radius;
+    for row in min_y..max_y {
+        let dy = (row as f32 + 0.5) - cy;
+        let dy2 = dy * dy;
+        for col in min_x..max_x {
+            let dx = (col as f32 + 0.5) - cx;
+            if dx * dx + dy2 <= r2 {
+                canvas.set(col, row, color);
+            }
+        }
+    }
+}
+
+fn fill_rounded_rect_radius(
+    canvas: &mut Canvas,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    radius: u32,
+    color: Rgba,
+) {
     if radius == 0 {
         fill_rect(canvas, x, y, width, height, color);
         return;
@@ -300,6 +338,13 @@ fn fill_rounded_rect(canvas: &mut Canvas, x: u32, y: u32, width: u32, height: u3
             }
         }
     }
+}
+
+/// Fill a rounded rectangle. `radius` is a quarter of the smaller side, which
+/// keeps the result recognisable at every module size.
+fn fill_rounded_rect(canvas: &mut Canvas, x: u32, y: u32, width: u32, height: u32, color: Rgba) {
+    let radius = (width.min(height) as f32 * 0.28).round() as u32;
+    fill_rounded_rect_radius(canvas, x, y, width, height, radius, color);
 }
 
 fn inside_rounded(px: u32, py: u32, x: u32, y: u32, width: u32, height: u32, radius: u32) -> bool {

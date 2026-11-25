@@ -87,6 +87,7 @@ pub enum ModuleStyle {
     #[default]
     Square,
     Rounded,
+    Dots,
 }
 
 /// Everything VYNX QR knows how to put inside a QR code.

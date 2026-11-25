@@ -49,6 +49,7 @@ pub mod ffi {
     enum ModuleStyle {
         Square,
         Rounded,
+        Dots,
     }
 
     enum EcLevel {
@@ -569,16 +570,18 @@ fn describe(error: vynx_qr_core::AppError) -> String {
 fn core_module_style(style: ModuleStyle) -> vynx_qr_core::qr::payload::ModuleStyle {
     if style == ModuleStyle::Rounded {
         vynx_qr_core::qr::payload::ModuleStyle::Rounded
+    } else if style == ModuleStyle::Dots {
+        vynx_qr_core::qr::payload::ModuleStyle::Dots
     } else {
         vynx_qr_core::qr::payload::ModuleStyle::Square
     }
 }
 
 fn bridge_module_style(style: vynx_qr_core::qr::payload::ModuleStyle) -> ModuleStyle {
-    if style == vynx_qr_core::qr::payload::ModuleStyle::Rounded {
-        ModuleStyle::Rounded
-    } else {
-        ModuleStyle::Square
+    match style {
+        vynx_qr_core::qr::payload::ModuleStyle::Rounded => ModuleStyle::Rounded,
+        vynx_qr_core::qr::payload::ModuleStyle::Dots => ModuleStyle::Dots,
+        vynx_qr_core::qr::payload::ModuleStyle::Square => ModuleStyle::Square,
     }
 }
 
@@ -1171,11 +1174,7 @@ fn to_settings(value: &Settings) -> vynx_qr_core::settings::Settings {
         default_format: core_export_format(value.default_format),
         default_size: value.default_size,
         default_error_correction: core_ec_level(value.default_error_correction),
-        default_module_style: if value.default_module_style == ModuleStyle::Rounded {
-            vynx_qr_core::qr::payload::ModuleStyle::Rounded
-        } else {
-            vynx_qr_core::qr::payload::ModuleStyle::Square
-        },
+        default_module_style: core_module_style(value.default_module_style),
     }
 }
 

@@ -13,7 +13,7 @@ Unicode true
 !include "MUI2.nsh"
 
 !ifndef VYNX_VERSION
-  !define VYNX_VERSION "1.1.4.1"
+  !define VYNX_VERSION "1.2.0"
 !endif
 !ifndef VYNX_PAYLOAD_DIR
   !define VYNX_PAYLOAD_DIR "..\\bin"
@@ -43,7 +43,7 @@ ShowInstDetails show
 ShowUninstDetails show
 SetCompressor /SOLID lzma
 
-VIProductVersion "${VYNX_VERSION}"
+VIProductVersion "${VYNX_VERSION}.0"
 VIAddVersionKey "ProductName"     "${PRODUCT}"
 VIAddVersionKey "CompanyName"     "${PUBLISHER}"
 VIAddVersionKey "FileDescription" "Fast, private QR codes for Windows."

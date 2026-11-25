@@ -1,3 +1,25 @@
+# VYNX QR 1.2.0
+
+Modern visual redesign, expanded customization options, and complete 3-language localization.
+
+### 🎨 Modern UI Redesign
+- **Purple Brand Palette**: Refined modern styling based on an indigo/purple brand palette (`#6366F1`) with crisp contrast across both light and dark themes.
+- **Card-Based Architecture**: Unified composer card, customizable module controls, and live preview card with subtle borders and balanced spacing.
+- **Modern Top Bar**: Clean header featuring the brand title, instant screen/file/clipboard QR scanner button, about, settings, and theme toggle.
+- **Segmented Category Pills**: Quick navigation for Link, Text, Email, Phone, Wi-Fi, and an interactive "More..." popup menu for special QR codes (vCard, SMS, Geolocation, Calendar, 2FA, Crypto, Bank/SBP).
+
+### 🔲 QR Module Styles
+- **Visual Style Selector**: Visual card selector with live iconography supporting Classic (Square), Rounded, and Dots module styles with immediate live preview updating.
+
+### ✍️ Caption Under QR Code
+- **Text Caption Banner**: Add a caption below the QR code with customizable text. Fully supported in live preview, clipboard copying, PNG export, and vector SVG `<text>` export.
+
+### 🌐 Complete 3-Language Localization
+- Complete string tables and verified translations across English, Russian, and Ukrainian for all UI elements, top bar, pills, styles, caption controls, preview actions, and installer.
+- Verified with automated tests ensuring 100% translation coverage.
+
+---
+
 # VYNX QR 1.1.4.1
 
 Hotfix release for the Windows auto-updater.

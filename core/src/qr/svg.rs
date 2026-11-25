@@ -60,8 +60,9 @@ pub fn export(matrix: &QrMatrix, style: &ResolvedStyle, size_px: u32) -> AppResu
     match style.module_style {
         ModuleStyle::Square => write_merged_runs(matrix, quiet, &mut svg),
         ModuleStyle::Rounded => write_rounded_modules(matrix, quiet, &mut svg),
+        ModuleStyle::Dots => write_dots_modules(matrix, quiet, &mut svg),
     }
-    if style.module_style == ModuleStyle::Rounded {
+    if style.module_style == ModuleStyle::Rounded || style.module_style == ModuleStyle::Dots {
         write_rounded_finders(matrix, quiet, &style.background.to_hex(), &mut svg);
     }
     svg.push_str("  </g>\n");
@@ -140,6 +141,22 @@ fn write_rounded_modules(matrix: &QrMatrix, quiet: usize, svg: &mut String) {
     }
 }
 
+/// Dots style: one circle per dark data module.
+fn write_dots_modules(matrix: &QrMatrix, quiet: usize, svg: &mut String) {
+    for y in 0..matrix.size {
+        for x in 0..matrix.size {
+            if !matrix.get(x, y) || matrix.is_finder(x, y) {
+                continue;
+            }
+            let cx = x as f32 + quiet as f32 + 0.5;
+            let cy = y as f32 + quiet as f32 + 0.5;
+            svg.push_str(&format!(
+                "    <circle cx=\"{cx:.1}\" cy=\"{cy:.1}\" r=\"0.45\"/>\n"
+            ));
+        }
+    }
+}
+
 /// Rounded style: the three position detection patterns, drawn as concentric
 /// rounded squares so they stay unmistakably finder patterns.
 fn write_rounded_finders(matrix: &QrMatrix, quiet: usize, background: &str, svg: &mut String) {
@@ -203,6 +220,18 @@ mod tests {
         assert!(document.contains("rx=\"0.28\""));
         assert!(document.contains("rx=\"0.9\""));
         assert!(document.contains("fill=\"#FFFFFF\""));
+    }
+
+    #[test]
+    fn dots_style_uses_circles() {
+        let style = QrStyle {
+            module_style: ModuleStyle::Dots,
+            ..QrStyle::default()
+        };
+        let document = svg_for(style);
+        assert!(document.contains("<circle cx="));
+        assert!(document.contains("r=\"0.45\""));
+        assert!(document.contains("rx=\"0.9\""));
     }
 
     #[test]

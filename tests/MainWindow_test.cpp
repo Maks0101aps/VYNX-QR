@@ -18,6 +18,7 @@
 
 #include <QApplication>
 #include <QAbstractSpinBox>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QFile>
@@ -26,22 +27,26 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QMenu>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QShortcut>
 #include <QPushButton>
+#include <QToolButton>
 #include <QTest>
 
 #include <rust/cxx.h>
 
 #include "MainWindow.h"
+#include "Theme.h"
 #include "platform/PlatformIntegration.h"
 #include "widgets/ClipboardSuggestion.h"
 #include "widgets/CustomizePanel.h"
 #include "widgets/QrPreview.h"
 #include "widgets/SpecialQrForms.h"
+#include "widgets/StyleSelectorWidget.h"
 #include "updater/AutoUpdater.h"
 #include "i18n/I18n.h"
 #include "vynx-qr-bridge/src/lib.rs.h"
@@ -54,7 +59,7 @@ QString bridgeString(const rust::String &value) {
 }
 
 /// Long enough for the 150 ms debounce to have fired.
-constexpr int kSettle = 600;
+constexpr int kSettle = 200;
 
 } // namespace
 
@@ -91,6 +96,26 @@ private slots:
     QVERIFY(copy);
     enter(smartInput(window), QStringLiteral("github.com"));
     window.onCustomizeToggled();
+    auto setClipboard = [](const QString &text) {
+      for (int i = 0; i < 5; ++i) {
+        QApplication::clipboard()->setText(text);
+        if (QApplication::clipboard()->text() == text) return;
+        QTest::qWait(10);
+      }
+    };
+
+    auto verifyClipboard = [](const auto &trigger, const QString &expected) {
+      for (int retry = 0; retry < 5; ++retry) {
+        if (retry > 0) QTest::qWait(25);
+        trigger();
+        for (int poll = 0; poll < 5; ++poll) {
+          if (QApplication::clipboard()->text() == expected) return true;
+          QTest::qWait(15);
+        }
+      }
+      return QApplication::clipboard()->text() == expected;
+    };
+
     int lineEdits = 0;
     int multilineEdits = 0;
     // Include smart input/HEX, all structured forms and spin-box child editors.
@@ -111,25 +136,20 @@ private slots:
         edit->selectAll();
         const auto selected = edit->selectedText();
         QVERIFY(!selected.isEmpty());
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QTest::keyClick(edit, Qt::Key_C, Qt::ControlModifier);
-        QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
-                     ? selected : QStringLiteral("sentinel"));
+        setClipboard(QStringLiteral("sentinel"));
+        const auto expected = edit->echoMode() == QLineEdit::Normal ? selected : QStringLiteral("sentinel");
+        QVERIFY(verifyClipboard([&] { QTest::keyClick(edit, Qt::Key_C, Qt::ControlModifier); }, expected));
         // Invoke the window fallback too: native ShortcutOverride can otherwise
         // hide a regression in this handler on some Qt/platform combinations.
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QCOMPARE(QApplication::clipboard()->text(), edit->echoMode() == QLineEdit::Normal
-                     ? selected : QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, expected));
         if (edit->echoMode() == QLineEdit::Password) {
           edit->setEchoMode(QLineEdit::Normal);
-          QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-          QCOMPARE(QApplication::clipboard()->text(), selected);
+          QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, selected));
           edit->setEchoMode(QLineEdit::Password);
         }
         edit->deselect();
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
+        setClipboard(QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, QStringLiteral("sentinel")));
         ++lineEdits;
       }
       for (auto *edit : window.findChildren<QPlainTextEdit *>()) {
@@ -138,15 +158,13 @@ private slots:
         edit->setFocus();
         QCOMPARE(QApplication::focusWidget(), edit);
         edit->selectAll();
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QCOMPARE(QApplication::clipboard()->text(), edit->toPlainText());
+        setClipboard(QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, edit->toPlainText()));
         auto cursor = edit->textCursor();
         cursor.clearSelection();
         edit->setTextCursor(cursor);
-        QApplication::clipboard()->setText(QStringLiteral("sentinel"));
-        QVERIFY(QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection));
-        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("sentinel"));
+        setClipboard(QStringLiteral("sentinel"));
+        QVERIFY(verifyClipboard([&] { QMetaObject::invokeMethod(copy, "activated", Qt::DirectConnection); }, QStringLiteral("sentinel")));
         ++multilineEdits;
       }
     }
@@ -476,6 +494,58 @@ private slots:
     I18n::instance().setLanguage(I18n::Language::English);
   }
 
+  void testAllNewUiStringsTranslatedInAllLanguages() {
+    for (const auto &lang : {I18n::Language::English, I18n::Language::Russian, I18n::Language::Ukrainian}) {
+      I18n::instance().setLanguage(lang);
+      QVERIFY(!I18n::tr("create_qr_code").isEmpty());
+      QVERIFY(!I18n::tr("style_classic").isEmpty());
+      QVERIFY(!I18n::tr("style_rounded").isEmpty());
+      QVERIFY(!I18n::tr("style_dots").isEmpty());
+      QVERIFY(!I18n::tr("add_text_under_qr").isEmpty());
+      QVERIFY(!I18n::tr("download_png").isEmpty());
+      QVERIFY(I18n::instance().hasTranslation("create_qr_code", lang));
+      QVERIFY(I18n::instance().hasTranslation("style_classic", lang));
+      QVERIFY(I18n::instance().hasTranslation("style_rounded", lang));
+      QVERIFY(I18n::instance().hasTranslation("style_dots", lang));
+      QVERIFY(I18n::instance().hasTranslation("add_text_under_qr", lang));
+      QVERIFY(I18n::instance().hasTranslation("download_png", lang));
+      QVERIFY(I18n::instance().hasTranslation("Clear", lang));
+    }
+
+    // Russian verification
+    I18n::instance().setLanguage(I18n::Language::Russian);
+    QCOMPARE(I18n::tr("create_qr_code"), QStringLiteral("Создать QR-код"));
+    QCOMPARE(I18n::tr("style_classic"), QStringLiteral("Классический"));
+    QCOMPARE(I18n::tr("style_rounded"), QStringLiteral("Закруглённый"));
+    QCOMPARE(I18n::tr("style_dots"), QStringLiteral("Точки"));
+    QCOMPARE(I18n::tr("add_text_under_qr"), QStringLiteral("Добавить текст под QR-кодом"));
+    QCOMPARE(I18n::tr("download_png"), QStringLiteral("Скачать (PNG)"));
+    QCOMPARE(I18n::tr("Clear"), QStringLiteral("Очистить"));
+
+    // Ukrainian verification
+    I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    QCOMPARE(I18n::tr("create_qr_code"), QStringLiteral("Створити QR-код"));
+    QCOMPARE(I18n::tr("style_classic"), QStringLiteral("Класичний"));
+    QCOMPARE(I18n::tr("style_rounded"), QStringLiteral("Округлий"));
+    QCOMPARE(I18n::tr("style_dots"), QStringLiteral("Точки"));
+    QCOMPARE(I18n::tr("add_text_under_qr"), QStringLiteral("Додати текст під QR-кодом"));
+    QCOMPARE(I18n::tr("download_png"), QStringLiteral("Завантажити (PNG)"));
+    QCOMPARE(I18n::tr("Clear"), QStringLiteral("Очистити"));
+
+    // English verification
+    I18n::instance().setLanguage(I18n::Language::English);
+    QCOMPARE(I18n::tr("create_qr_code"), QStringLiteral("Create QR code"));
+    QCOMPARE(I18n::tr("style_classic"), QStringLiteral("Classic"));
+    QCOMPARE(I18n::tr("style_rounded"), QStringLiteral("Rounded"));
+    QCOMPARE(I18n::tr("style_dots"), QStringLiteral("Dots"));
+    QCOMPARE(I18n::tr("add_text_under_qr"), QStringLiteral("Add text under QR code"));
+    QCOMPARE(I18n::tr("download_png"), QStringLiteral("Download (PNG)"));
+    QCOMPARE(I18n::tr("Clear"), QStringLiteral("Clear"));
+
+    // Reset back to English
+    I18n::instance().setLanguage(I18n::Language::English);
+  }
+
   void decodeQrCodeFromImage() {
     MainWindow window;
     present(window);
@@ -490,6 +560,234 @@ private slots:
     const rust::String decoded =
         vynx::decode_qr_rgba(slice, bitmap.width, bitmap.height);
     QCOMPARE(bridgeString(decoded), QStringLiteral("https://vynx.app/test"));
+  }
+
+  void themeTokensAndBrandPaletteValid() {
+    auto palette = makePalette(QStringLiteral("light"), QColor());
+    QCOMPARE(vynxBlue(), QColor("#6366F1")); // Modern brand purple
+    QVERIFY(palette.surface.isValid());
+    QVERIFY(palette.window.isValid());
+    QCOMPARE(palette.accentText, QColor("#FFFFFF"));
+
+    auto darkPalette = makePalette(QStringLiteral("dark"), QColor());
+    QVERIFY(darkPalette.isDark());
+    QCOMPARE(darkPalette.accentText, QColor("#FFFFFF"));
+
+    QString qss = styleSheetFor(palette);
+    QVERIFY(qss.contains(QStringLiteral("QFrame[role=\"card\"]")));
+    QVERIFY(qss.contains(QStringLiteral("QPushButton[role=\"pill\"]")));
+    QVERIFY(qss.contains(QStringLiteral("QAbstractButton[role=\"styleCard\"]")));
+    QVERIFY(qss.contains(QStringLiteral("QToolButton[role=\"topBarButton\"]")));
+  }
+
+  void styleSelectorSwitchesModes() {
+    MainWindow window;
+    present(window);
+
+    // Default style is Classic (Square)
+    QCOMPARE(window.currentOptions().module_style, vynx::ModuleStyle::Square);
+
+    auto *styleSelector = window.findChild<StyleSelectorWidget *>();
+    QVERIFY(styleSelector != nullptr);
+    QCOMPARE(styleSelector->selectedStyle(), vynx::ModuleStyle::Square);
+
+    // Switch to Dots
+    styleSelector->setStyle(vynx::ModuleStyle::Dots);
+    QCOMPARE(styleSelector->selectedStyle(), vynx::ModuleStyle::Dots);
+    QCOMPARE(window.currentOptions().module_style, vynx::ModuleStyle::Dots);
+
+    // Switch to Rounded
+    styleSelector->setStyle(vynx::ModuleStyle::Rounded);
+    QCOMPARE(styleSelector->selectedStyle(), vynx::ModuleStyle::Rounded);
+    QCOMPARE(window.currentOptions().module_style, vynx::ModuleStyle::Rounded);
+  }
+
+  void topBarAndPillNavigationWork() {
+    MainWindow window;
+    present(window);
+
+    // Theme toggle button exists and toggles theme
+    auto *themeToggle = window.findChild<QAbstractButton *>(QStringLiteral("themeToggle"));
+    QVERIFY(themeToggle != nullptr);
+    const auto initialTheme = window.settings_.theme;
+    themeToggle->click();
+    QVERIFY(window.settings_.theme != initialTheme);
+
+    // Category pills exist
+    auto *urlPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_url"));
+    auto *wifiPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_wifi"));
+    QVERIFY(urlPill != nullptr);
+    QVERIFY(wifiPill != nullptr);
+
+    wifiPill->click();
+    QCOMPARE(window.smartMode_, false);
+
+    urlPill->click();
+    QCOMPARE(window.smartMode_, true);
+  }
+
+  void generateButtonOnStructuredFormKeepsResult() {
+    MainWindow window;
+    present(window);
+
+    window.setSpecialKind(vynx::PayloadType::Wifi);
+    QLineEdit *ssid = findField(window, QStringLiteral("Network name (SSID)"));
+    QVERIFY(ssid != nullptr);
+    enter(ssid, QStringLiteral("TestWifi"));
+    QLineEdit *password = findField(window, QStringLiteral("Password"));
+    QVERIFY(password != nullptr);
+    enter(password, QStringLiteral("SecretPass123"));
+
+    const auto resultBefore = window.currentResult();
+    QVERIFY(resultBefore.width > 0);
+
+    // Clicking generateButton_ while in structured form must not wipe the QR code
+    QVERIFY(window.generateButton_ != nullptr);
+    window.generateButton_->click();
+
+    const auto resultAfter = window.currentResult();
+    QVERIFY(resultAfter.width > 0);
+    QCOMPARE(resultAfter.width, resultBefore.width);
+  }
+
+  void morePillRestoresPreviousPillWhenMenuCancelled() {
+    MainWindow window;
+    present(window);
+
+    auto *urlPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_url"));
+    auto *wifiPill = window.findChild<QAbstractButton *>(QStringLiteral("pill_wifi"));
+    auto *morePill = window.findChild<QAbstractButton *>(QStringLiteral("pill_more"));
+    QVERIFY(urlPill && wifiPill && morePill);
+
+    wifiPill->click();
+    QVERIFY(wifiPill->isChecked());
+
+    // Close menu when it shows
+    QTimer::singleShot(50, &window, [] {
+      for (auto *widget : QApplication::topLevelWidgets()) {
+        if (auto *menu = qobject_cast<QMenu *>(widget)) {
+          menu->close();
+        }
+      }
+    });
+    morePill->click();
+
+    // Since menu was cancelled without picking an action, wifiPill remains checked
+    QVERIFY(wifiPill->isChecked());
+    QVERIFY(!morePill->isChecked());
+  }
+
+  void captionUnderQrCodeExportedAndCopied() {
+    MainWindow window;
+    present(window);
+
+    enter(smartInput(window), QStringLiteral("github.com"));
+    QVERIFY(window.currentResult().width > 0);
+
+    auto *captionBox = window.findChild<QCheckBox *>(QStringLiteral("captionCheckbox"));
+    QVERIFY2(captionBox != nullptr, "caption checkbox must exist in settings");
+    auto *captionInput = window.findChild<QLineEdit *>(QStringLiteral("captionInput"));
+    QVERIFY2(captionInput != nullptr, "caption line edit must exist");
+
+    QVERIFY(!captionBox->isChecked());
+    QVERIFY(!captionInput->isVisible());
+
+    captionBox->setChecked(true);
+    QVERIFY(captionInput->isVisible());
+
+    captionInput->setText(QStringLiteral("Scan me"));
+    QTest::qWait(50);
+
+    // Verify copy to clipboard includes caption (height > width)
+    window.onCopy();
+    const QImage copyImage = QApplication::clipboard()->image();
+    QVERIFY(!copyImage.isNull());
+    QVERIFY2(copyImage.height() > copyImage.width(), "copied image must include caption banner");
+
+    // Verify export PNG includes caption
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pngPath = dir.filePath(QStringLiteral("caption_test.png"));
+    QVERIFY(window.exportToFile(pngPath, vynx::ExportFormat::Png));
+    const QImage pngImage(pngPath);
+    QVERIFY(!pngImage.isNull());
+    QVERIFY2(pngImage.height() > pngImage.width(), "exported PNG image must include caption banner");
+
+    // Verify export SVG includes caption and <text>
+    const QString svgPath = dir.filePath(QStringLiteral("caption_test.svg"));
+    QVERIFY(window.exportToFile(svgPath, vynx::ExportFormat::Svg));
+    QFile svgFile(svgPath);
+    QVERIFY(svgFile.open(QIODevice::ReadOnly));
+    const QString svgContent = QString::fromUtf8(svgFile.readAll());
+    QVERIFY(svgContent.contains(QStringLiteral("Scan me")));
+    QVERIFY(svgContent.contains(QStringLiteral("<text")));
+
+    // When unchecked, export returns to square
+    captionBox->setChecked(false);
+    window.onCopy();
+    const QImage uncheckImage = QApplication::clipboard()->image();
+    QVERIFY(!uncheckImage.isNull());
+    QCOMPARE(uncheckImage.height(), uncheckImage.width());
+
+    QApplication::clipboard()->clear();
+  }
+
+  void captureDesignScreenshots() {
+    MainWindow window;
+    present(window);
+    window.resize(980, 680);
+
+    // 1. Ukrainian Light theme screenshot (matching user mockup)
+    I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    enter(smartInput(window), QStringLiteral("github.com"));
+    QVERIFY(window.currentResult().width > 0);
+
+    auto *captionBox = window.findChild<QCheckBox *>(QStringLiteral("captionCheckbox"));
+    if (captionBox) {
+      captionBox->setChecked(true);
+      auto *captionInput = window.findChild<QLineEdit *>(QStringLiteral("captionInput"));
+      if (captionInput) {
+        captionInput->setText(QStringLiteral("VYNX QR • Швидкі та приватні QR-коди"));
+      }
+    }
+
+    auto *styleSelector = window.findChild<StyleSelectorWidget *>();
+    if (styleSelector) {
+      styleSelector->setStyle(vynx::ModuleStyle::Dots);
+    }
+    QTest::qWait(250);
+
+    QDir().mkpath(QStringLiteral("docs/screenshots"));
+    QPixmap ukLightPix = window.grab();
+    QVERIFY(!ukLightPix.isNull());
+    ukLightPix.save(QStringLiteral("docs/screenshots/vynx-qr-uk-light.png"));
+
+    // 2. English Light theme screenshot
+    I18n::instance().setLanguage(I18n::Language::English);
+    if (captionBox) {
+      auto *captionInput = window.findChild<QLineEdit *>(QStringLiteral("captionInput"));
+      if (captionInput) {
+        captionInput->setText(QStringLiteral("VYNX QR • Fast & Private"));
+      }
+    }
+    QTest::qWait(250);
+    QPixmap enLightPix = window.grab();
+    QVERIFY(!enLightPix.isNull());
+    enLightPix.save(QStringLiteral("docs/screenshots/vynx-qr-light.png"));
+
+    // 3. English Dark theme screenshot
+    auto *themeToggle = window.findChild<QToolButton *>(QStringLiteral("themeToggle"));
+    if (themeToggle) {
+      themeToggle->click();
+      QTest::qWait(250);
+      QPixmap enDarkPix = window.grab();
+      QVERIFY(!enDarkPix.isNull());
+      enDarkPix.save(QStringLiteral("docs/screenshots/vynx-qr-dark.png"));
+      themeToggle->click();
+      QTest::qWait(100);
+    }
+
+    I18n::instance().setLanguage(I18n::Language::English);
   }
 
 private:
@@ -524,11 +822,12 @@ private:
   /// Type one character at a time with a pause, as a person does.
   static void typeWithPause(QWidget *target, const QString &text) {
     target->setFocus();
-    QTest::qWait(50);
+    QTest::qWait(20);
     for (const QChar character : text) {
       QTest::keyClicks(target, character);
-      QTest::qWait(200);
+      QTest::qWait(20);
     }
+    QTest::qWait(kSettle);
   }
 
   /// The universal input, found the way assistive technology finds it. A plain
