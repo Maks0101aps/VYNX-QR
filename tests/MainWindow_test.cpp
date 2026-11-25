@@ -34,6 +34,7 @@
 #include <QPlainTextEdit>
 #include <QShortcut>
 #include <QPushButton>
+#include <QToolButton>
 #include <QTest>
 
 #include <rust/cxx.h>
@@ -729,6 +730,64 @@ private slots:
     QCOMPARE(uncheckImage.height(), uncheckImage.width());
 
     QApplication::clipboard()->clear();
+  }
+
+  void captureDesignScreenshots() {
+    MainWindow window;
+    present(window);
+    window.resize(980, 680);
+
+    // 1. Ukrainian Light theme screenshot (matching user mockup)
+    I18n::instance().setLanguage(I18n::Language::Ukrainian);
+    enter(smartInput(window), QStringLiteral("github.com"));
+    QVERIFY(window.currentResult().width > 0);
+
+    auto *captionBox = window.findChild<QCheckBox *>(QStringLiteral("captionCheckbox"));
+    if (captionBox) {
+      captionBox->setChecked(true);
+      auto *captionInput = window.findChild<QLineEdit *>(QStringLiteral("captionInput"));
+      if (captionInput) {
+        captionInput->setText(QStringLiteral("VYNX QR • Швидкі та приватні QR-коди"));
+      }
+    }
+
+    auto *styleSelector = window.findChild<StyleSelectorWidget *>();
+    if (styleSelector) {
+      styleSelector->setStyle(vynx::ModuleStyle::Dots);
+    }
+    QTest::qWait(250);
+
+    QDir().mkpath(QStringLiteral("docs/screenshots"));
+    QPixmap ukLightPix = window.grab();
+    QVERIFY(!ukLightPix.isNull());
+    ukLightPix.save(QStringLiteral("docs/screenshots/vynx-qr-uk-light.png"));
+
+    // 2. English Light theme screenshot
+    I18n::instance().setLanguage(I18n::Language::English);
+    if (captionBox) {
+      auto *captionInput = window.findChild<QLineEdit *>(QStringLiteral("captionInput"));
+      if (captionInput) {
+        captionInput->setText(QStringLiteral("VYNX QR • Fast & Private"));
+      }
+    }
+    QTest::qWait(250);
+    QPixmap enLightPix = window.grab();
+    QVERIFY(!enLightPix.isNull());
+    enLightPix.save(QStringLiteral("docs/screenshots/vynx-qr-light.png"));
+
+    // 3. English Dark theme screenshot
+    auto *themeToggle = window.findChild<QToolButton *>(QStringLiteral("themeToggle"));
+    if (themeToggle) {
+      themeToggle->click();
+      QTest::qWait(250);
+      QPixmap enDarkPix = window.grab();
+      QVERIFY(!enDarkPix.isNull());
+      enDarkPix.save(QStringLiteral("docs/screenshots/vynx-qr-dark.png"));
+      themeToggle->click();
+      QTest::qWait(100);
+    }
+
+    I18n::instance().setLanguage(I18n::Language::English);
   }
 
 private:

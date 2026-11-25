@@ -13,30 +13,27 @@ Paste a link, text, an email address or a phone number and the code is there
 already — classified, rendered, and read back to prove it scans. No account, no
 telemetry, no network requests, and no history of what you encoded.
 
-![VYNX QR](app/resources/icons/icon.ico)
-
-![Linux native window](docs/screenshots/linux-x11.png)
-
-Actual Ubuntu 24.04 / Qt 6.4.2 window under Xvfb/Openbox, captured in
-[Actions run 37586370670](https://github.com/Maks0101aps/VYNX-QR/actions/runs/37586370670).
-This is automated X11 evidence; manual GNOME/KDE Wayland validation is pending.
+<p align="center">
+  <img src="docs/screenshots/vynx-qr-light.png" alt="VYNX QR Modern Design (Light Theme)" width="49%" />
+  <img src="docs/screenshots/vynx-qr-dark.png" alt="VYNX QR Modern Design (Dark Theme)" width="49%" />
+</p>
 
 ## Features
 
+- **Modern Card-Based UI.** Clean two-column interface with category pills (Link, Text, Email, Phone, Wi-Fi, More...), top navigation bar with instant Light/Dark theme switching, and built-in QR screen scanner.
 - **One input.** The type is worked out automatically: a URL, an email address, a
   phone number, or plain text. Nothing changes silently — if `https://` is added
   to `github.com` you are told, and you can keep exactly what you typed.
 - **Verified, not assumed.** Every code is decoded again by an independent
   decoder after being rendered. "Scan verified" means it was actually read back
   and matched.
-- **Structured codes.** Wi-Fi, contact card, email, phone, SMS and location, each
+- **Structured codes.** Wi-Fi, contact card, email, phone, SMS, calendar events, 2FA/TOTP, crypto, and location, each
   with a form that updates the code as you type.
-- **Customise.** Module shape, both colours, error correction, quiet zone, export
-  size, and a logo. A logo raises error correction to High automatically and the
-  interface says so rather than reporting what you asked for.
-- **Real files.** Save as PNG or as genuine vector SVG. Copy puts an actual image
+- **Customise & Style.** 3 visual module styles (Classic square, Rounded, and Dots), foreground and background color pickers with visual swatches, error correction, quiet zone, and custom text captions rendered under the QR code.
+- **Real files.** Save as PNG or as genuine vector SVG with optional caption banner. Copy puts an actual image
   on the clipboard, so it pastes into Word or a chat as a picture rather than as a
   file path.
+- **Multilingual.** English, Ukrainian, and Russian with instant live UI retranslation.
 - **Native.** One application process and no browser engine. Measurements for
   Windows and Linux are documented below; AppImage may also use a filesystem mount helper.
 
